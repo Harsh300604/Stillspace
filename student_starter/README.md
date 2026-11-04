@@ -6,7 +6,7 @@ This is the **complete Stillspace app** with the five "brain" functions left for
 
 ## Run it
 
-Set up Python, the venv and the packages as in the main project's `docs/SETUP.md` (the commands are the same), but **inside this `student_starter` folder**:
+Set up Python, the venv and the packages as in `docs/SETUP.md` (in this folder; it was written for the finished app, so skip its `git clone` step if you got this folder as a zip, and use port 8001). Run everything **inside this starter folder**:
 ```powershell
 cd student_starter
 python -m venv .venv
@@ -28,10 +28,13 @@ Open **http://localhost:8001** (port 8001, so it can run next to the finished ap
 | 4 | `backend/prompt_builder.py` → `build_messages()` | Add the conversation history (memory) | The model remembers what you said two messages ago |
 | 5 | `backend/safety.py` → `check_message()` (*already works*) | Read it, run the safety test, discuss limits | `30 rows, 0 mismatches` |
 | 6 | `backend/strategy_policy.py` → `choose_strategy()` | Request beats classifier; default = first strategy | Choosing "Advice" makes the badge say Advice |
-| 7 | `backend/classifier.py` → `classify()` + `parse_classifier_output()` and `backend/data/prompts/classifier.txt` | The classifier prompt and safe JSON parsing | `python scripts/eval_classifier.py` shows `source=llm` and an accuracy |
+| 7 | `backend/classifier.py` → `classify()` + `parse_classifier_output()` and `backend/data/prompts/classifier.txt` | The classifier prompt and safe JSON parsing | `python scripts/eval_classifier.py` shows `(llm, ...ms)` on every row and an accuracy |
 | 9 | `backend/prompt_builder.py` → `build_system_prompt()` + `build_messages()` | Strategy instruction + emotion/stage + check-ins in the prompt | Replies change with the strategy; the DEBUG print shows the full prompt |
 
 Each function's docstring lists the steps and hints. Try the steps yourself first; look at the hints when you're stuck. Your mentor has the finished version (the main project folder) as the answer key.
+
+## Docs in this folder
+`docs/SETUP.md` (installing, step by step) · `docs/SAFETY.md` (read before testing) · `docs/TROUBLESHOOTING.md` (look up any error message) · `docs/ARCHITECTURE.md` (what each file does).
 
 ## Useful commands
 

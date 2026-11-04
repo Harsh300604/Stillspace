@@ -85,7 +85,7 @@ def parse_classifier_output(text: str, strategy_names: list[str]) -> dict:
       5. risk: clean_risk(raw.get("risk", "none"))   (anything unclear becomes "high": safety first)
       6. rationale: str(raw.get("rationale", "")).strip()[:300]
       7. Build ClassifierResult(...) with these values and return result.model_dump().
-    Done when: python scripts/eval_classifier.py shows source=llm on every row.
+    Done when: python scripts/eval_classifier.py shows "(llm, ...ms)" on every row.
     """
     raise ValueError("TODO Session 7: parse_classifier_output is not written yet")
 

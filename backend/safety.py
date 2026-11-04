@@ -30,6 +30,8 @@ def normalise(text: str) -> str:
     # Look-alike swaps only inside words that also contain letters, so "112" stays "112".
     text = re.sub(r"[a-z0-9@$]*[a-z][a-z0-9@$]*", lambda m: m.group().translate(LOOKALIKES), text)
     text = re.sub(r"(?<=[a-z])[.\-_*]+(?=[a-z])", "", text)  # s.u.i.c.i.d.e -> suicide
+    # d i e / k i l l -> die / kill: three or more single letters separated by spaces are joined.
+    text = re.sub(r"\b(?:[a-z] ){2,}[a-z]\b", lambda m: m.group().replace(" ", ""), text)
     return re.sub(r"\s+", " ", text).strip()
 
 

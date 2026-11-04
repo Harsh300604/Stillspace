@@ -25,7 +25,7 @@
 ### What the keyword check catches
 - English phrases and patterns ("kill myself", "end my life", "no reason to live", "sleep and never wake up", …)
 - Hinglish ("mar jaana", "zindagi khatam", "jeena nahi chahta", …) and Devanagari ("आत्महत्या", "मरना चाहता", …)
-- Spelling tricks, after normalising: capitals, curly apostrophes, `can't`/`cant`, look-alike digits (`k1ll`, `$uicide`), separated letters (`s.u.i.c.i.d.e`), stretched letters (`dieee`)
+- Spelling tricks, after normalising: capitals, curly apostrophes, `can't`/`cant`, look-alike digits (`k1ll`, `$uicide`), separated letters (`s.u.i.c.i.d.e`, `d i e`), stretched letters (`dieee`)
 - Every match is logged with its **rule id** (terminal + database), so false alarms can be reviewed.
 
 ### The fixed crisis reply
