@@ -158,7 +158,32 @@ Each entry has:
 
 ---
 
-## 8. Scope decisions
+## 8. Strategy-aware replies (Phase 7)
+
+### The pipeline, in order (spec 5; D-44)
+1. **Keyword safety**: on a match, fixed reply, no AI at all.
+2. **Classifier**: strategy, emotion, intensity, stage, risk (it sees the recent history).
+3. **Classifier risk** `high` → the same fixed reply (`safety_flag="classifier"`). The second safety net.
+4. **Strategy policy**: safety > the user's request > the classifier's suggestion > the first strategy in the file.
+5. **Prompt builder**: `system.txt` + the strategy's instruction + emotion/intensity/stage + check-in lines + history.
+6. **Reply**: model (or the mock reply for that strategy).
+7. **Store everything**: requested, classified and used strategy, plus the classifier's meta, on both messages.
+
+### What goes into the prompt (privacy)
+- **Only** today's mood ("Mood today: Low") and the latest **complete** PHQ-9 **band** ("moderate range"), and only when `INCLUDE_CHECKINS_IN_PROMPT=true`.
+- **Never** the date of birth or individual PHQ answers. Verified by inspecting every request a test model server received.
+- **Teaching note (Session 12):** toggling `INCLUDE_CHECKINS_IN_PROMPT` and comparing replies is a hands-on way to discuss what data an AI really needs.
+
+### Explainability panel
+- Under "Currently used by model": the strategy, then "Emotion · intensity · stage". If the user's request overrode the classifier: "Classifier suggested X; your request was used."
+- **Badges stay honest:** a fallback reply shows "Fallback reply", not a strategy, because no strategy shaped it.
+
+### A gap found while testing
+- "I just want to sleep and never wake up" slipped past the keywords. It would only have been caught by the classifier's risk check. A keyword rule was added, so the deterministic net catches it too. *Lesson: write tests for indirect phrasings, not only the obvious ones.*
+
+---
+
+## 9. Scope decisions
 
 - **Classifier (D-21):** prompt-based with Qwen. A trained DistilBERT/DeBERTa classifier is a documented **stretch idea only** (spec section 3 puts it out of scope; 30 test messages are too few to train on; the ESConv dataset would be the source).
 - **Extra checks (D-19):** some phases have extra checks marked "(Extra)". All the spec's checks are kept.
@@ -166,10 +191,11 @@ Each entry has:
 
 ---
 
-## 9. Changelog of this file
+## 10. Changelog of this file
 
 | Date | Phase | Change |
 |---|---|---|
 | 4 Nov 2026 | after Phase 4 | File created; covers D-01 to D-39 |
 | 4 Nov 2026 | Phase 5 | Safety section updated (D-40) |
 | 4 Nov 2026 | Phase 6 | Classifier section added (D-41); first real result and no-tuning decision (D-42); qwen3:8b comparison and hybrid-model fix (D-43) |
+| 4 Nov 2026 | Phase 7 | Strategy-aware replies section added (D-44) |

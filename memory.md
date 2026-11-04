@@ -11,9 +11,9 @@
 
 | Item | Value |
 |---|---|
-| Last completed phase | **Phase 5** – Safety layer |
-| Current phase | **Phase 6 – Strategy classifier** (built, waiting for the developer's checks) |
-| Next phase | Phase 7 – Prompt builder and strategy-aware replies |
+| Last completed phase | **Phase 6** – Strategy classifier (90%) |
+| Current phase | **Phase 7 – Prompt builder and strategy-aware replies** (built, waiting for the developer's checks) |
+| Next phase | Phase 8 – Reflection, summary, export |
 | Branch | `claude/gracious-euler-tlrs89` (repo `harsh300604/stillspace`) |
 | Project folder (dev laptop) | `D:\CreatED-cloud\stillspace` |
 | Python | 3.11.9 (installed at `C:\Program Files\Python311`; venv and packages on D:) |
@@ -103,7 +103,7 @@ Mock mode: set `LLM_API_KEY=` (empty) and restart.
 - **Known false positive (kept on purpose):** "I love the movie suicide squad".
 - **Checks 1–7:** all passed in the dev chat's run on a fresh copy, at the developer's request (model server standing in for Ollama).
 
-### Phase 6 – Strategy classifier (4 Nov 2026) 🔨 built, waiting for checks
+### Phase 6 – Strategy classifier (4 Nov 2026) ✅
 - **Built:** `backend/classifier.py`, `prompts/classifier.txt`, `mock_classify()` in `mock.py`, `eval/test_messages.csv` (30 rows, balanced), `scripts/eval_classifier.py`.
 - **Design choice from the developer's Phase 2 suggestion:** prompt-based classification with Qwen first; a trained DistilBERT/DeBERTa classifier stays a stretch idea (D-21).
 - **Verified by the dev chat:** 13 parser edge cases; evaluation in mock mode, against a fake model (retry and fallback paths) and with the ESConv-8 warning. Not yet verified: the real model's accuracy (developer, check 1).
@@ -112,6 +112,15 @@ Mock mode: set `LLM_API_KEY=` (empty) and restart.
 - **Not tuned on purpose (D-42):** the misses are kept for the student's Session 8 exercise. Confidence is always 0.95+, even when wrong.
 - **`qwen3:8b` comparison (developer, stopped after 5 messages):** all fallbacks ("JSON not closed"), 35–51 s per message. It's a hybrid model that thinks by default, the `/no_think` switch never reached the classifier's single user message, and 8B doesn't fit fully in 6 GB of VRAM → **stay on `qwen3:4b-instruct` for everything**. Code fixed so `/no_think` also reaches single-message prompts (D-43). Remember `Remove-Item Env:CLASSIFIER_MODEL` after a one-off test.
 - **Heads-up for Phase 7:** two model calls per message (classifier + reply) → expect roughly 6–9 s per reply with Ollama.
+
+### Phase 7 – Prompt builder and strategy-aware replies (4 Nov 2026) 🔨 built, waiting for checks
+- **Built:** `strategy_policy.py`, `prompt_builder.py`, `prompts/system.txt`, the full 7-step pipeline in `routes/chat.py`, `checkins.checkin_context()`, the explainability panel and strategy badges.
+- **Verified by the dev chat:** policy 8/8, prompt builder 9/9 (privacy rule: no date of birth or raw PHQ answers, confirmed in every request the model server received), browser checks 1/2/3/5 in mock mode and against a fake model, classifier `risk: high` → Safety response; Phase 3/5 regressions green.
+- **Found and fixed while testing:**
+  - "I just want to sleep and never wake up" was **not** caught by the keywords → new rule `en-sleep-never-wake` (the safety set still gives 30/0).
+  - The fallback reply showed a strategy badge ("Validation") although no strategy shaped it → it shows "Fallback reply" again.
+  - My own quick one-liner said "20 mismatches" because Python read `x is not None != y` as a chained comparison. Always use the documented check command.
+- **Expect** ~6–9 s per reply with Ollama now (two model calls); mock mode stays instant.
 
 ---
 

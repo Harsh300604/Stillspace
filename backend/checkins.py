@@ -117,3 +117,17 @@ def build_status(conn: sqlite3.Connection, participant: sqlite3.Row, strategy_na
             "fortnightly": json.loads(fortnightly["answers_json"]) if fortnightly and not fortnightly_due else {},
         },
     }
+
+
+def checkin_context(conn: sqlite3.Connection, participant: sqlite3.Row) -> dict:
+    """Only what the reply prompt may use: today's mood and the latest complete PHQ-9 band.
+
+    Never the item answers and never the date of birth (spec 11.4).
+    """
+    today = local_today(participant).isoformat()
+    daily = db.latest_checkin(conn, participant["id"], "daily", local_date=today)
+    fortnightly = db.latest_checkin(conn, participant["id"], "fortnightly")
+    return {
+        "mood": json.loads(daily["answers_json"]).get("mood") if daily else None,
+        "phq_band": fortnightly["phq_band"] if fortnightly and fortnightly["phq_complete"] else None,
+    }

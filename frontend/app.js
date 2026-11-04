@@ -6,8 +6,8 @@
   layout and behaviour are kept. Every change required by spec section 12 is
   marked with a "CHANGED:" comment so it is easy to compare with the mockup.
 
-  Phase 5 status: strategies, participants, check-ins, chat replies and the
-  safety layer use the server. Strategy-aware replies arrive in Phase 7.
+  Phase 7 status: everything uses the server, including strategy-aware replies
+  and the explainability panel (used strategy + emotion, intensity, stage).
 */
 
 const $ = id => document.getElementById(id);
@@ -64,6 +64,7 @@ let finishing = false;  // stops a double click from saving a check-in twice
 let sessionId = null;   // id from POST /api/sessions; a new one for each "New session"
 let chatError = null;   // {message, text} after a failed send, shown with a Retry button
 let sessionSafetyFlag = false;  // true once any reply in this session was a safety response (spec 11.5)
+let lastReply = null;  // {meta, classified, requested} of the last reply, for the explainability panel
 
 // Mood buttons are stored by name so the database is readable (same order as the buttons).
 const MOOD_LABELS = ['Low', 'Unsettled', 'Neutral', 'Okay', 'Good'];
@@ -190,7 +191,19 @@ function risk() {
 // CHANGED: the select id is a parameter (the mockup used string replacement
 // for the mobile copy); options come from /api/config; wording made accurate.
 function support(selectId = 'preferred') {
-  return `<h3>Support strategies</h3><label class="labelblock" for="${selectId}">Requested by you</label><select class="field" id="${selectId}"><option>Automatic</option>${strategyOptions(preferred)}</select><p class="tiny">Change this any time. Your request is a preference, separate from the style used.</p><div class="labelblock">Currently used by model</div><output class="strategyused">${implemented || 'Awaiting first reply'}</output><p class="tiny">Read-only · chosen for each reply, so it can differ from your request.</p>`;
+  return `<h3>Support strategies</h3><label class="labelblock" for="${selectId}">Requested by you</label><select class="field" id="${selectId}"><option>Automatic</option>${strategyOptions(preferred)}</select><p class="tiny">Change this any time. Your request is a preference, separate from the style used.</p><div class="labelblock">Currently used by model</div><output class="strategyused">${implemented || 'Awaiting first reply'}</output>${explainHtml()}<p class="tiny">Read-only · chosen for each reply, so it can differ from your request.</p>`;
+}
+
+// CHANGED: the explainability panel (spec section 12): what the classifier saw in
+// the last message, and whether the user's request overrode its suggestion.
+function explainHtml() {
+  if (!lastReply || !lastReply.meta || !lastReply.meta.emotion) return '';
+  const m = lastReply.meta;
+  let note = '';
+  if (lastReply.requested && lastReply.requested !== 'Automatic' && lastReply.classified && lastReply.classified !== implemented && implemented !== 'Safety') {
+    note = `<br>Classifier suggested ${esc(lastReply.classified)}; your request was used.`;
+  }
+  return `<p class="tiny">Emotion: ${esc(m.emotion)} · intensity ${esc(m.intensity)}/5 · stage: ${esc(m.stage)}${note}</p>`;
 }
 
 function moodHtml() {
@@ -512,9 +525,10 @@ async function ensureSession() {
   return sessionId;
 }
 
-// Badge text for a reply: the strategy once Phase 7 adds it, otherwise where the reply came from.
+// Badge text for a reply: safety and fallback replies say so; otherwise the strategy used (Phase 7).
 function replyBadge(m) {
   if (m.safety) return 'Safety response';
+  if (m.source === 'fallback') return 'Fallback reply';  // no strategy shaped this text
   if (m.strategy) return m.strategy;
   return { mock: 'Mock reply', fallback: 'Fallback reply' }[m.source] || 'AI reply';
 }
@@ -558,6 +572,7 @@ async function requestReply(text) {
     if (result.used_strategy) implemented = result.used_strategy;
     const safetyInfo = result.safety && result.safety.flag !== 'none' ? result.safety : null;
     if (safetyInfo) sessionSafetyFlag = true;  // risk indicator -> "Follow-up needed"
+    lastReply = { meta: result.meta, classified: result.classified_strategy, requested: result.requested_strategy };
     messages.push({ role: 'assistant', text: result.reply, strategy: result.used_strategy, source: result.source, safety: safetyInfo });
   } catch (error) {
     if (token !== epoch) return;
@@ -603,14 +618,14 @@ function reset() {
   if (messages.length && !confirm('Start a new session? Your check-ins stay saved; this conversation will be cleared from the screen.')) return;
   epoch++;
   messages = []; post = {}; implemented = null; busy = false; started = null; elapsed = 0;
-  sessionId = null; chatError = null; sessionSafetyFlag = false;  // the next chat creates a fresh server session
+  sessionId = null; chatError = null; sessionSafetyFlag = false; lastReply = null;  // the next chat creates a fresh server session
   enterChat();
 }
 
 // CHANGED: forget the code in this tab and go back to the consent page.
 function switchParticipant() {
   clearStoredCode();
-  participantCode = ''; status = null; sessionId = null; chatError = null; sessionSafetyFlag = false;
+  participantCode = ''; status = null; sessionId = null; chatError = null; sessionSafetyFlag = false; lastReply = null;
   epoch++;
   step = unlocked = 0; consent = false; mood = null; preferred = 'Automatic'; implemented = null; tab = 'fortnight';
   messages = []; phq = {}; extra = {}; daily = {}; setup = {}; post = {}; busy = false;

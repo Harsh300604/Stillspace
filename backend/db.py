@@ -91,6 +91,11 @@ def get_participant(conn: sqlite3.Connection, code: str) -> sqlite3.Row | None:
     return conn.execute("SELECT * FROM participants WHERE code = ?", (code,)).fetchone()
 
 
+def get_participant_by_id(conn: sqlite3.Connection, participant_id: int) -> sqlite3.Row | None:
+    """Find a participant by row id (used to get from a chat session to its participant)."""
+    return conn.execute("SELECT * FROM participants WHERE id = ?", (participant_id,)).fetchone()
+
+
 def create_participant(conn: sqlite3.Connection, code: str) -> sqlite3.Row:
     """Add a new participant with default settings and return the stored row."""
     conn.execute("INSERT INTO participants (code, created_at) VALUES (?, ?)", (code, now_iso()))

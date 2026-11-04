@@ -48,8 +48,8 @@ Around the chat there are check-ins (setup, daily mood, PHQ-9 every 14 days, pos
 | 3 | Database, participants, check-ins | `backend/db.py`, `backend/checkins.py`, `backend/routes/participants.py`, `backend/routes/checkins.py`, demo endpoint, `backend/main.py`, `frontend/app.js`, `frontend/index.html` | ✅ Done – checks passed |
 | 4 | LLM client, mock mode, basic chat | `backend/llm.py`, `backend/mock.py`, `backend/routes/chat.py`, `backend/db.py`, `backend/main.py`, `backend/data/prompts/plain_system.txt`, `frontend/app.js`, `frontend/index.html`, `frontend/styles.css` | ✅ Done – checks passed |
 | 5 | Safety layer | `backend/safety.py`, `backend/data/crisis_keywords.json`, `backend/data/prompts/crisis_response.txt`, `eval/safety_prompts.csv`, `backend/routes/chat.py`, `backend/checkins.py`, `frontend/app.js`, `frontend/styles.css`, `frontend/index.html` | ✅ Done – checks passed |
-| 6 | Strategy classifier | `backend/classifier.py`, `backend/data/prompts/classifier.txt`, `backend/mock.py`, `eval/test_messages.csv`, `scripts/eval_classifier.py` | 🔨 Built – waiting for your checks |
-| 7 | Prompt builder and strategy-aware replies | `backend/prompt_builder.py`, `backend/strategy_policy.py`, `backend/data/prompts/system.txt`, `backend/routes/chat.py`, `frontend/app.js` | ⬜ Not started |
+| 6 | Strategy classifier | `backend/classifier.py`, `backend/data/prompts/classifier.txt`, `backend/mock.py`, `eval/test_messages.csv`, `scripts/eval_classifier.py` | ✅ Done – checks passed (90%) |
+| 7 | Prompt builder and strategy-aware replies | `backend/strategy_policy.py`, `backend/prompt_builder.py`, `backend/data/prompts/system.txt`, `backend/routes/chat.py`, `backend/checkins.py`, `backend/db.py`, `backend/data/crisis_keywords.json`, `frontend/app.js` | 🔨 Built – waiting for your checks |
 | 8 | Reflection, summary, export | `backend/routes/chat.py` (end + summary), `frontend/app.js`, `scripts/export_data.py` | ⬜ Not started |
 | 9 | Evaluation kit | `scripts/eval_responses.py` | ⬜ Not started |
 | 10 | Handover docs, student starter, mentoring.md | `README.md`, `docs/SETUP.md`, `docs/ARCHITECTURE.md`, `docs/SAFETY.md`, `docs/TROUBLESHOOTING.md`, `student_starter/`, `mentoring.md` | ⬜ Not started |
@@ -363,7 +363,7 @@ Before you start: `git pull origin claude/gracious-euler-tlrs89`, keep Terminal 
 
 **Goal:** a robust classifier returning valid JSON every time (real or mock), plus an evaluation script.
 
-**Status:** 🔨 Built, checks 1–3 passed on your laptop (4 Nov 2026).
+**Status:** ✅ Done (4 Nov 2026). Checks 1–3 passed on your laptop; check 5 (qwen3:8b) was tried and rejected (D-43).
 
 **Results with `qwen3:4b-instruct-2507-q4_K_M` (Ollama, RTX 4050):**
 
@@ -417,24 +417,42 @@ Before you start: `git pull origin claude/gracious-euler-tlrs89`. Terminal C (`o
 
 **Goal:** the full pipeline from spec section 5, an explainability panel, and a saved preference.
 
+**Status:** 🔨 Built – waiting for your checks.
+
 **Files:**
-- `backend/strategy_policy.py`: `choose_strategy(requested, classified, safety_flag, strategy_names)` (spec 11.2)
-- `backend/prompt_builder.py`: `build_messages(strategy, meta, checkin_context, history, message)` → `[system, ...history, user]`; `checkin_lines(...)` (mood and PHQ band only)
-- `backend/data/prompts/system.txt`: spec 11.4 text with placeholders
-- `backend/routes/chat.py`: full pipeline (keyword safety → classify → classifier-risk safety → policy → build → LLM → log); console log `[chat] strategy=… emotion=… safety=… NNNNms`; a commented-out `# DEBUG:` print of the system prompt for check 4
-- `frontend/app.js`: assistant badge shows the used strategy; side panel shows "Currently used by model" plus emotion / intensity / stage; "Requested by you" PATCHes the preference
+- `backend/strategy_policy.py`: `choose_strategy(requested, classified, safety_flag, strategy_names)`, exactly spec 11.2 (safety → request → classifier → first strategy).
+- `backend/prompt_builder.py`: `build_messages()` → `[system, ...history, user]`; `build_system_prompt()`; `checkin_lines()` (only "Mood today" and the PHQ **band**, and only when `INCLUDE_CHECKINS_IN_PROMPT=true` and the data exists).
+- `backend/data/prompts/system.txt`: the spec 11.4 text with placeholders.
+- `backend/routes/chat.py`: the full pipeline. (1) keyword safety → (2) classifier (with history) → (3) `risk == "high"` → fixed safety reply with `safety_flag="classifier"` → (4) strategy policy → (5) prompt builder with check-in context → (6) reply (model or mock reply for the used strategy) → (7) store both messages with requested/classified/used strategy and `meta_json`. Console line: `[chat] strategy=Advice (requested=Advice, classified=Validation) emotion=sadness safety=none source=llm 6400ms`. Contains the commented `# DEBUG: print system prompt` line for check 4.
+- `backend/checkins.py`: `checkin_context()` returns only today's mood and the latest **complete** PHQ-9 band. `backend/db.py`: `get_participant_by_id()`.
+- `backend/data/crisis_keywords.json`: new rule `en-sleep-never-wake` ("sleep and never wake up"), found while writing the tests.
+- `frontend/app.js`: the explainability panel under "Currently used by model" (emotion · intensity · stage, plus "Classifier suggested X; your request was used." when your request overrode it). The reply badge shows the used strategy; safety and fallback replies keep their own badges.
+
+**What was done / deviations (D-44):**
+- `meta_json` stores emotion, intensity, stage, risk, confidence, rationale, `classifier_source` (llm/mock/fallback) and `classifier_ms`. `latency_ms` is the **total** time the person waited (classifier + reply).
+- The classifier sees the same recent history as the reply model.
+- A refresh starts a new chat session (D-27), so the summary counts only the current session. Earlier messages stay in the database (K-07).
+- **Automated verification (dev chat):** strategy policy 8/8 cases; prompt builder 9/9 incl. the privacy rule; browser checks 1, 2, 3 and 5 in mock mode and against a fake model server; check 4 by inspecting what the model server received: strategy instruction, "Mood today: Low" and "moderate range" present, date of birth and raw PHQ answers **absent from every request**; classifier `risk: high` on an indirect message → Safety response + "Follow-up needed"; Phase 3 (33/33) and Phase 5 safety checks still pass. Expected changes: badges now show strategy names instead of "Mock reply"/"AI reply".
 
 **Manual checks:**
 
-1. Requested = **Automatic**. Send "I don't know why I feel off today".
-   **Expect:** the side panel shows a used strategy (likely **Reflection**) and, below it in small text, emotion, intensity and stage. The badge on the reply shows the same strategy.
+Before you start: `git pull origin claude/gracious-euler-tlrs89`; Terminal C (`ollama serve`) running; restart uvicorn; **Ctrl+F5**. For check 4 you need a participant with today's mood and a complete PHQ-9 (e.g. sign in as a new code like `P010`, then complete setup, daily with mood "Low", and all 9 PHQ items). Expect about 6–9 s per reply with Ollama (two model calls).
+
+1. With "Requested by you" = **Automatic**, send "I don't know why I feel off today".
+   **Expect:** the reply badge shows a strategy (likely **Reflection**). The side panel shows it under "Currently used by model", and below it in small text "Emotion: … · intensity N/5 · stage: …". Terminal A: `[chat] strategy=Reflection (requested=Automatic, classified=Reflection) emotion=... safety=none source=llm ...ms`.
 2. Set "Requested by you" to **Advice** and send "I can't focus on studying".
-   **Expect:** used strategy = **Advice**, and the reply suggests one or two small concrete steps.
-3. Press F5. **Expect:** "Requested by you" is still **Advice**. Set it back to **Automatic**.
-4. In `backend/routes/chat.py` remove the `#` in front of the line marked `# DEBUG: print system prompt`, save (auto-reload), and send a message.
-   **Expect:** Terminal A prints the system prompt, which contains "Support strategy for this reply", the strategy's instruction, "Mood today: …" and "Recent wellbeing questionnaire: … range". No date of birth and no individual PHQ answers. Put the `#` back.
-5. Send the same message ("My friends have been ignoring me") once with each of the 4 strategies selected.
-   **Expect:** the four replies read noticeably differently (Validation names the feeling, Reflection paraphrases and asks, Reassurance offers perspective, Advice gives steps).
+   **Expect:** badge and panel show **Advice**. The reply suggests one or two small concrete steps. If the classifier would have chosen something else, the panel adds "Classifier suggested …; your request was used."
+3. Press **F5**. **Expect:** "Requested by you" still shows **Advice**. Set it back to **Automatic**.
+4. In `backend\routes\chat.py` find the line ending in `# DEBUG: print system prompt` and remove the `# ` at its start (save; uvicorn reloads). Send a message.
+   **Expect:** Terminal A prints the system prompt with "Support strategy for this reply: …", "How to apply it: …", "- Mood today: Low" and "- Recent wellbeing questionnaire: … range". **No** date of birth and no individual PHQ answers. Put the `# ` back afterwards (or run `git checkout backend/routes/chat.py`).
+5. Send "My friends have been ignoring me" four times, with "Requested by you" set to **Validation**, **Reflection**, **Reassurance** and **Advice** in turn.
+   **Expect:** the four badges match the four choices and the replies read noticeably differently (Validation names the feeling; Reflection paraphrases and asks; Reassurance offers perspective; Advice gives a small step).
+6. (Extra) Set `INCLUDE_CHECKINS_IN_PROMPT=false`, restart and repeat check 4. **Expect:** no "Mood today" or "questionnaire" lines. Set it back to `true`.
+7. (Extra) Database:
+   ```powershell
+   python -c "import sqlite3; c=sqlite3.connect('data/stillspace.db'); [print(r) for r in c.execute('select id, role, requested_strategy, classified_strategy, used_strategy, safety_flag, source from messages order by id desc limit 4')]"
+   ```
+   **Expect:** requested, classified and used strategy all filled (e.g. `('Advice', 'Validation', 'Advice', 'none', 'llm')`).
 
 ---
 
@@ -579,6 +597,7 @@ Things the spec leaves open or gets slightly wrong. In each case I picked the si
 | D-41 | Classifier details: the whole prompt goes as one **user** message; placeholders are filled with `.replace()`; temperature 0, max 200 tokens; one retry, then the spec's defaults; risk values other than none/low/high → **high**; strategy names matched case-insensitively (unknown → first in the file); history shown as `User:` / `Stillspace:` lines; `eval_classifier.py` adds the project folder to `sys.path` so `python scripts/eval_classifier.py` works; the test set is labelled for strategies_4 (the script warns otherwise); mock rules map to the closest ESConv-8 name. Wired into the chat in Phase 7. | Robust JSON from small models; safety-first on unclear risk; works with the exact command in the spec. |
 | D-42 | The classifier prompt and strategy descriptions are **not** tuned after the first real run (90%), and the self-reported `confidence` is not used for decisions. | Tuning on the 30 test messages would overfit them (the score would stop meaning anything). The 3 Reassurance misses are kept as a ready-made student exercise (Session 8). Confidence was 0.95+ even when wrong. |
 | D-43 | `/no_think` is added only for **hybrid** Qwen3 models (name contains `qwen3` but not `instruct` or `thinking`): on the system message if there is one, otherwise on the last message. **Dev model stays `qwen3:4b-instruct-2507-q4_K_M` for classifier and replies.** | The `qwen3:8b` comparison failed: it thought until the 200-token limit (cut-off JSON → fallback) and took 35–51 s per message on the 6 GB GPU. The classifier sends one user message, so the old system-only switch never reached it. The handoff model `qwen/qwen3-14b` is hybrid too. |
+| D-44 | Phase 7 pipeline details: the classifier gets the same history as the reply; `meta_json` = classifier meta + `classifier_source` + `classifier_ms`; `latency_ms` = total wait; check-in context = today's mood + latest **complete** PHQ band only; a classifier `risk: high` gives the fixed reply with `safety_flag="classifier"` and keeps the classifier's strategy in `classified_strategy`; the panel explains when a request overrode the classifier; fallback replies keep the "Fallback reply" badge; new keyword rule `en-sleep-never-wake`. | Spec 5, 10, 11.2, 11.4 and 12; honest badges (a fallback text was not shaped by any strategy); the extra keyword rule closes a gap found while testing. |
 
 ---
 
@@ -592,3 +611,4 @@ Things the spec leaves open or gets slightly wrong. In each case I picked the si
 | K-04 | The comparison model (mental-health fine-tuned) has not been chosen yet (D-23). | Needed before Phase 9. Phases 2–8 don't depend on it. |
 | K-05 | ~~Chat answers came from placeholders in `app.js`.~~ | **Resolved in Phase 4:** replies come from `/api/chat` (mock or LLM) and are stored. |
 | K-06 | A mood or style chosen on the consent page **before** signing in is not saved: after sign-in the page shows what the server has stored. | Minor. Choose them after signing in. |
+| K-07 | A page refresh starts a new chat session, so the conversation disappears from the screen and the summary counts only the current session. All messages are still stored in the database. | Acceptable for the prototype (D-27). Could restore the last session's messages later if wanted. |
