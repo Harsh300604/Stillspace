@@ -11,8 +11,8 @@
 
 | Item | Value |
 |---|---|
-| Last completed phase | **Phase 6** – Strategy classifier (90%) |
-| Current phase | **Phase 7 – Prompt builder and strategy-aware replies** (built, waiting for the developer's checks) |
+| Last completed phase | **Phase 7** – Prompt builder and strategy-aware replies |
+| Current phase | – (Phase 8 not started yet) |
 | Next phase | Phase 8 – Reflection, summary, export |
 | Branch | `claude/gracious-euler-tlrs89` (repo `harsh300604/stillspace`) |
 | Project folder (dev laptop) | `D:\CreatED-cloud\stillspace` |
@@ -113,7 +113,7 @@ Mock mode: set `LLM_API_KEY=` (empty) and restart.
 - **`qwen3:8b` comparison (developer, stopped after 5 messages):** all fallbacks ("JSON not closed"), 35–51 s per message. It's a hybrid model that thinks by default, the `/no_think` switch never reached the classifier's single user message, and 8B doesn't fit fully in 6 GB of VRAM → **stay on `qwen3:4b-instruct` for everything**. Code fixed so `/no_think` also reaches single-message prompts (D-43). Remember `Remove-Item Env:CLASSIFIER_MODEL` after a one-off test.
 - **Heads-up for Phase 7:** two model calls per message (classifier + reply) → expect roughly 6–9 s per reply with Ollama.
 
-### Phase 7 – Prompt builder and strategy-aware replies (4 Nov 2026) 🔨 built, waiting for checks
+### Phase 7 – Prompt builder and strategy-aware replies (4 Nov 2026) ✅
 - **Built:** `strategy_policy.py`, `prompt_builder.py`, `prompts/system.txt`, the full 7-step pipeline in `routes/chat.py`, `checkins.checkin_context()`, the explainability panel and strategy badges.
 - **Verified by the dev chat:** policy 8/8, prompt builder 9/9 (privacy rule: no date of birth or raw PHQ answers, confirmed in every request the model server received), browser checks 1/2/3/5 in mock mode and against a fake model, classifier `risk: high` → Safety response; Phase 3/5 regressions green.
 - **Found and fixed while testing:**
