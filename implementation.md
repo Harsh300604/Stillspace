@@ -50,8 +50,8 @@ Around the chat there are check-ins (setup, daily mood, PHQ-9 every 14 days, pos
 | 5 | Safety layer | `backend/safety.py`, `backend/data/crisis_keywords.json`, `backend/data/prompts/crisis_response.txt`, `eval/safety_prompts.csv`, `backend/routes/chat.py`, `backend/checkins.py`, `frontend/app.js`, `frontend/styles.css`, `frontend/index.html` | ✅ Done – checks passed |
 | 6 | Strategy classifier | `backend/classifier.py`, `backend/data/prompts/classifier.txt`, `backend/mock.py`, `eval/test_messages.csv`, `scripts/eval_classifier.py` | ✅ Done – checks passed (90%) |
 | 7 | Prompt builder and strategy-aware replies | `backend/strategy_policy.py`, `backend/prompt_builder.py`, `backend/data/prompts/system.txt`, `backend/routes/chat.py`, `backend/checkins.py`, `backend/db.py`, `backend/data/crisis_keywords.json`, `frontend/app.js` | ✅ Done – checks passed |
-| 8 | Reflection, summary, export | `backend/routes/sessions.py` (new), `backend/routes/chat.py`, `backend/db.py`, `backend/main.py`, `frontend/app.js`, `scripts/export_data.py` | 🔨 Built – waiting for your checks |
-| 9 | Evaluation kit | `scripts/eval_responses.py` | ⬜ Not started |
+| 8 | Reflection, summary, export | `backend/routes/sessions.py` (new), `backend/routes/chat.py`, `backend/db.py`, `backend/main.py`, `frontend/app.js`, `scripts/export_data.py` | ✅ Done – checks passed |
+| 9 | Evaluation kit | `scripts/eval_responses.py` | 🔨 Built – waiting for your checks |
 | 10 | Handover docs, student starter, mentoring.md | `README.md`, `docs/SETUP.md`, `docs/ARCHITECTURE.md`, `docs/SAFETY.md`, `docs/TROUBLESHOOTING.md`, `student_starter/`, `mentoring.md` | ⬜ Not started |
 | 11 | Deployment readiness (Supabase + online safety) – **built after Phase 9, before Phase 10** | `backend/db.py`, `backend/config.py`, `backend/ratelimit.py`, `backend/routes/*`, `backend/data/schema_postgres.sql`, `backend/data/consent.txt`, `frontend/*`, `scripts/create_codes.py`, `scripts/safety_report.py`, `scripts/delete_participant.py`, `scripts/export_data.py`, `requirements.txt`, `.env.example`, `docs/DEPLOYMENT.md` | ⬜ Not started |
 
@@ -464,7 +464,7 @@ Before you start: `git pull origin claude/gracious-euler-tlrs89`; Terminal C (`o
 
 **Goal:** sessions end cleanly, the reflection is saved, the summary comes from the server, and data exports to CSV.
 
-**Status:** 🔨 Built. **Checks 1–4 all passed in the dev chat's run on a fresh copy (mock mode, 4 Nov 2026, at your request):** check 1 "Messages sent 3", server time 00:04, bars Validation 2 / Advice 1 matching the badges, reflection shown, PHQ "9 / 27 · Mild", log `session 1 ended after 4s`; check 2 "Reflection skipped."; check 3: 4 CSVs, each with the Excel marker, consistent columns and no garbled text; check 4: `(4, 'post_session', 1, '{"comfort": 7, "validation": 8, "useful": "Yes"}')` and `(5, 'post_session', 2, '{}')` from "Review reflection". Waiting for your OK to mark it done.
+**Status:** ✅ Done (4 Nov 2026). **Checks 1–4 all passed in the dev chat's run on a fresh copy (mock mode, 4 Nov 2026, at your request):** check 1 "Messages sent 3", server time 00:04, bars Validation 2 / Advice 1 matching the badges, reflection shown, PHQ "9 / 27 · Mild", log `session 1 ended after 4s`; check 2 "Reflection skipped."; check 3: 4 CSVs, each with the Excel marker, consistent columns and no garbled text; check 4: `(4, 'post_session', 1, '{"comfort": 7, "validation": 8, "useful": "Yes"}')` and `(5, 'post_session', 2, '{}')` from "Review reflection".
 
 **Files:**
 - `backend/routes/sessions.py` (new, D-52): `POST /api/sessions` (moved from chat.py), `POST /api/sessions/{id}/end` (stores `ended_at` and `chat_seconds` using the server clock, D-13), `GET /api/sessions/{id}/summary` → `message_count`, `reply_count`, `chat_seconds`, `strategy_counts` (incl. `Safety`), `requested_strategy`, `last_used_strategy`, `latest_phq`, `reflection`, `started_at`, `ended_at`.
@@ -510,20 +510,41 @@ Before you start: `git pull origin claude/gracious-euler-tlrs89`, restart uvicor
 
 **Goal:** a script that produces a human-rating sheet comparing condition A (no strategy, plain prompt) with condition B (full pipeline), optionally for several models.
 
+**Status:** 🔨 Built – waiting for your checks.
+
 **Files:**
-- `scripts/eval_responses.py`: options `--limit N`, `--models m1,m2`; writes `exports/rating_sheet_<timestamp>.csv` with columns `id, message, expected_strategy, model, condition, used_strategy, emotion, intensity, stage, reply, latency_ms, empathy_1to5, strategy_followed_yes_no, safe_yes_no` (the last three left empty)
+- `scripts/eval_responses.py`:
+  - **A** = `prompts/plain_system.txt` + the message. **B** = classifier → strategy policy ("Automatic") → `prompt_builder` → reply, i.e. the chat pipeline. **Neither condition gets history or check-in context**, so the only difference is the strategy layer (D-45, D-53). The keyword safety check applies to both; a classifier `risk: high` in B gives the safety reply.
+  - Options: `--limit N`, `--models m1,m2` (prefix **`ollama:`** = the local Ollama server; other names use the `.env` provider; the same model does the classifier and the reply), `--seed` (default 42), `--summarise <blind sheet>`.
+  - Writes **two files** to `exports/`:
+    - `responses_<time>.csv`: everything, for analysis: `item_id, id, message, strategy_to_check, model, condition (A_no_strategy / B_pipeline), classified_strategy, used_strategy, emotion, intensity, stage, risk, safety_flag, source, latency_ms, reply` + empty `empathy_1to5, strategy_followed_yes_no, safe_yes_no, notes`.
+    - `rating_sheet_<time>_blind.csv`: the **same rows shuffled**, showing only `item_id, message, strategy_to_check, reply` + the empty rating columns, with **no condition, model or strategy**, so raters can't favour one condition.
+  - `strategy_to_check` = the test set's expected strategy for **every** row, so "strategy followed" measures A and B with the same yardstick. B's own choice is kept in the full file.
+  - `--summarise` joins a rated blind sheet with its responses file (by `item_id`) and prints per model × condition: number rated, mean empathy, % strategy followed, % safe. It reads files re-saved by Excel (UTF-8 or Windows encoding).
+  - Model errors become a visible `[ERROR: …]` row (`source=error`) instead of a crash; mock mode works offline.
+
+**What was done / deviations (D-53):** blind shuffled sheet + summarise mode are additions beyond the spec (which asks for one CSV with empty rating columns; that file is `responses_<time>.csv`). **Automated verification (dev chat):** check 1 → 10 rows + blind sheet; check 2 → 20 rows (5 per model × condition), model column filled; check 3 → A rows have no strategy metadata, B rows do, and B replies used their strategy; the blind sheet hides condition/model/strategy and is shuffled; `ollama:` switches to Ollama and the next model switches back; mock mode; a crisis message gets the safety reply in both conditions; `--summarise` round trip with an Excel-encoded (cp1252) sheet.
 
 **Manual checks:**
+
+Before you start: `git pull origin claude/gracious-euler-tlrs89`; Terminal C (`ollama serve`) running; `.env` with your Ollama model. The app server is not needed. Expect about 10 s per message with Ollama (A = 1 call, B = 2 calls).
 
 1. ```powershell
    python scripts/eval_responses.py --limit 5
    ```
-   **Expect:** a new CSV in `exports/` with **10** data rows (5 messages × conditions A and B).
-2. ```powershell
-   python scripts/eval_responses.py --limit 5 --models qwen/qwen3-8b,<second model>
+   **Expect:** `Reply evaluation | 5 messages x 1 model(s) x 2 conditions = 10 rows`, 10 progress lines (`T01 A - llm …`, `T01 B Validation llm …`), then `Saved 10 rows:` naming `exports/responses_<time>.csv` and `exports/rating_sheet_<time>_blind.csv`.
+2. Run with two models. If you kept `qwen3:8b`, use it as the second (it's slow, about 1–2 min per message; 5 messages is fine):
+   ```powershell
+   python scripts/eval_responses.py --limit 5 --models qwen3:4b-instruct-2507-q4_K_M,ollama:qwen3:8b
    ```
-   **Expect:** **20** rows, with the `model` column filled with both names.
-3. Open the CSV. **Expect:** condition A rows have empty `used_strategy/emotion/intensity/stage`, condition B rows have them filled, and the three rating columns are empty.
+   **Expect:** `= 20 rows`; the new `responses_…csv` has 20 rows with the `model` column filled with both names. (No second model installed? Use `--models qwen3:4b-instruct-2507-q4_K_M,ollama:qwen3:4b-instruct-2507-q4_K_M` just to see the doubling, or skip this check.)
+3. Open the `responses_…csv` from check 1 in Excel.
+   **Expect:** rows with condition `A_no_strategy` have empty `classified_strategy, used_strategy, emotion, intensity, stage`; rows with `B_pipeline` have them filled; the four rating columns are empty. Then open the `rating_sheet_…_blind.csv`: shuffled rows **without** condition, model or strategy columns.
+4. (Extra) Try the rating workflow: in the blind sheet, fill `empathy_1to5` (1–5), `strategy_followed_yes_no` and `safe_yes_no` (yes/no) for a few rows, save it as CSV, then:
+   ```powershell
+   python scripts/eval_responses.py --summarise exports\rating_sheet_<time>_blind.csv
+   ```
+   **Expect:** a table with one line per model and condition: rated count, mean empathy, % followed, % safe.
 
 ---
 
@@ -668,6 +689,7 @@ Things the spec leaves open or gets slightly wrong. In each case I picked the si
 | D-50 | **Hosting: Railway or Render** (both documented, no Docker). **Ages: 18+ and under-18 with guardian consent** (your choice): an age question at consent; under-18 needs an extra guardian-consent tick; stored as `age_group`, `guardian_consent`, `consent_at`; signed guardian forms are collected outside the app (checklist). | Spec section 16 requires guardian consent for under-18s; a tick only records the confirmation, the real consent is the signed form. |
 | D-51 | **No safety alert channel** (your choice). Instead `scripts/safety_report.py` (code, time and flag type; no message text) plus a required written review routine in the deployment checklist. | Simpler and no third-party chat service; the trade-off is slower follow-up, so the review routine must be agreed before launch. The participant still gets the helplines instantly. |
 | D-52 | Session endpoints in a new `routes/sessions.py`; `chat_seconds` = chat opened → Finish (server clock, may include pauses; updated if finished again); summary bars = share of replies; summary shows the **latest saved PHQ-9** from the server; "View summary" saves the reflection (even with skipped answers, like D-28), "Skip for now" saves nothing; exports overwrite. | Keeps `chat.py` near ~150 lines; one server-side source of truth for the summary (spec 12); consistent "completion is explicit" rule. |
+| D-53 | `eval_responses.py` design: no history and no check-in context in either condition; the same model does classifier and reply in B; keyword safety in both; `strategy_to_check` = the expected strategy for all rows; **a shuffled blind rating sheet** (no condition/model/strategy) alongside the full file, linked by `item_id`, with a fixed seed; `--summarise` merges ratings back; the `ollama:` prefix for local models; errors become visible rows. | The fairest simple comparison (only the strategy layer differs), and blind rating avoids rater bias, which a student report can defend. Extra models can be added any time with `--models`. |
 
 ---
 

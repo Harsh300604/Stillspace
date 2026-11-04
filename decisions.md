@@ -192,6 +192,13 @@ Each entry has:
 - **Chat time uses the server clock**, from opening the chat to Finish. *Teaching note:* ask the student what "chat time" should mean for the research. Including pauses is the simple choice; measuring only active typing would need more design.
 - **Export:** one CSV per table, with the Excel marker so Hinglish/Devanagari text displays correctly. The files contain participant data and are git-ignored.
 
+### Evaluating replies fairly (Phase 9, D-53)
+- **A vs B, nothing else different:** A = plain prompt, B = full strategy pipeline. Same message, same model, **no history and no check-in data in either**, so any difference comes from the strategy layer.
+- **Blind rating:** raters get a shuffled sheet without condition, model or strategy, so they can't (even unconsciously) favour the strategy condition. The full file keeps everything for analysis, linked by `item_id`. A fixed seed makes the shuffle repeatable.
+- **The same yardstick:** "strategy followed" is judged against the test set's expected strategy for every row.
+- **Several models:** `--models a,b`, with `ollama:` for local ones; the same model does classify and reply in B.
+- **Teaching note (Sessions 13–14):** why blinding matters, why we remove history (D-45), and what the numbers can and can't show with 30 synthetic messages and one or two raters.
+
 ---
 
 ## 9. Going online: Supabase and online safety (Phase 11, planned)
@@ -236,4 +243,5 @@ Each entry has:
 | 4 Nov 2026 | Phase 6 | Classifier section added (D-41); first real result and no-tuning decision (D-42); qwen3:8b comparison and hybrid-model fix (D-43) |
 | 4 Nov 2026 | Phase 7 | Strategy-aware replies section added (D-44); check-5 method (D-45) |
 | 4 Nov 2026 | Phase 8 | Summary, reflection and export (D-52) |
+| 4 Nov 2026 | Phase 9 | Evaluation design: A vs B, blind rating sheet (D-53) |
 | 4 Nov 2026 | after Phase 7 | Deployment plan: Supabase + online safety as Phase 11 (D-46 to D-50); developer's choices on hosting, ages, limits, no alerts (D-49 to D-51) |

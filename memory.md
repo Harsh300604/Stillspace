@@ -11,9 +11,9 @@
 
 | Item | Value |
 |---|---|
-| Last completed phase | **Phase 7** – Prompt builder and strategy-aware replies |
-| Current phase | **Phase 8 – Reflection, summary, export** (built, waiting for the developer's checks) |
-| Next phase | Phase 9 – Evaluation kit |
+| Last completed phase | **Phase 8** – Reflection, summary, export |
+| Current phase | **Phase 9 – Evaluation kit** (built, waiting for the developer's checks) |
+| Next phase | Phase 11 – Deployment readiness (Supabase), then Phase 10 – handover docs + mentoring.md |
 | Build order from here | 8 → 9 → **11 (deployment: Supabase + online safety)** → 10 (docs, student starter, mentoring.md last) |
 | Branch | `claude/gracious-euler-tlrs89` (repo `harsh300604/stillspace`) |
 | Project folder (dev laptop) | `D:\CreatED-cloud\stillspace` |
@@ -125,11 +125,16 @@ Mock mode: set `LLM_API_KEY=` (empty) and restart.
 - **Developer's first run:** checks 1 and 2 good. In check 5 the **Reflection reply was identical to the Validation reply**: the same message was sent 4× in one conversation, so the model copied its own earlier reply from the history. Fix: a new session before each strategy (D-45). Lesson: when comparing strategies, use independent conversations (this matters for Phase 9 too).
 - **Checks 1–7 (dev-chat run on a fresh copy, at the developer's request):** all passed, including the privacy scan of the printed prompt and of every request to the model, and fresh sessions sending no earlier history.
 
-### Phase 8 – Reflection, summary, export (4 Nov 2026) 🔨 built, waiting for checks
+### Phase 8 – Reflection, summary, export (4 Nov 2026) ✅
 - **Built:** `routes/sessions.py` (start/end/summary), reflection saved as a `post_session` check-in, a server-built summary page (time, messages, latest PHQ-9, strategy bars, reflection), `scripts/export_data.py` (4 CSVs for Excel).
 - **Verified by the dev chat:** API cases + browser checks 1 and 2 + export (4 CSVs with BOM); Phase 3/7 regressions green.
 - **Note:** `db.py` is 214 lines; it gets restructured in Phase 11 (Postgres).
 - **Checks 1–4:** all passed in the dev chat's run on a fresh copy (mock mode), at the developer's request.
+
+### Phase 9 – Evaluation kit (4 Nov 2026) 🔨 built, waiting for checks
+- **Built:** `scripts/eval_responses.py`: A (plain prompt) vs B (full pipeline) per message and model, with no history or check-ins in either. Writes the full `responses_*.csv` plus a **shuffled blind rating sheet**; `--summarise` merges ratings back; the `ollama:` prefix for local models.
+- **Decision:** the developer left the design open ("what holds up best"), so it's built for a fair, blind comparison (D-53). A second model can be added any time with `--models`.
+- **Verified by the dev chat:** 10/20-row runs, A/B metadata, blind sheet, model switching, mock mode, crisis rows, the summarise round trip with an Excel-encoded file.
 
 ### Plan change after Phase 7 (4 Nov 2026)
 - The developer wants to deploy the app later so the student can share it. **Decision:** Supabase Postgres + online safety, as a new **Phase 11**, built after Phase 9 and before Phase 10 (D-46 to D-50).
