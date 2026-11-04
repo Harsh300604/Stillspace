@@ -48,3 +48,13 @@ CREATE TABLE IF NOT EXISTS messages (
     latency_ms INTEGER NULL,
     created_at TEXT NOT NULL
 );
+-- Sign-in tokens (D-60): after a code is accepted, the browser gets a random token
+-- and sends it with every request instead of the code. Only a SHA-256 hash of the
+-- token is stored, so a copy of the database cannot be used to sign in.
+CREATE TABLE IF NOT EXISTS auth_tokens (
+    id INTEGER PRIMARY KEY,
+    participant_id INTEGER NOT NULL REFERENCES participants(id),
+    token_hash TEXT UNIQUE NOT NULL,
+    created_at TEXT NOT NULL,
+    expires_at TEXT NOT NULL
+);

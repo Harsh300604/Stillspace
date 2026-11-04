@@ -5,6 +5,10 @@ There are no passwords: a participant is only a pseudonymous code like P001
 typed on the consent screen (spec section 4). Online (APP_ENV=production) only
 codes issued by the researcher with scripts/create_codes.py can sign in, and the
 consent step records the age answer (D-48, D-50).
+
+The code is sent ONCE, to POST /api/participants. The answer contains a sign-in
+token; every other endpoint finds the participant from that token (auth.py, D-60),
+so no request can reach another participant's data.
 """
 
 import re
@@ -14,7 +18,7 @@ from datetime import date
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
-from backend import checkins, config, db, ratelimit
+from backend import auth, checkins, config, db, ratelimit
 
 router = APIRouter()
 
@@ -34,7 +38,6 @@ class ParticipantUpdate(BaseModel):
 
 
 class DemoAdvance(BaseModel):
-    code: str
     days: int
 
 
@@ -69,14 +72,6 @@ def consent_fields(body: CodeBody) -> dict:
 def strategy_names() -> list[str]:
     """Names in the active strategy set, used to validate preferences."""
     return [s["name"] for s in config.load_strategies()]
-
-
-def find_participant(conn, code: str):
-    """Load a participant or answer 404, so every route handles unknown codes the same way."""
-    participant = db.get_participant(conn, normalise_code(code))
-    if participant is None:
-        raise HTTPException(404, "Participant code not found. Please start from the consent page.")
-    return participant
 
 
 def check_dob(dob: str) -> str | None:
@@ -120,23 +115,27 @@ def login_participant(body: CodeBody, request: Request) -> dict:
         elif created:
             participant = db.create_participant(conn, code)
             conn.commit()
-        print(f"[participants] {'new' if created else 'returning'} participant {code}")
-        return {"created": created, "status": checkins.build_status(conn, participant, strategy_names())}
+        sign_in = auth.issue_token(conn, participant["id"])
+        conn.commit()
+        # The log shows the internal id, not the code: the code is what signs a person in.
+        print(f"[participants] {'new' if created else 'returning'} participant #{participant['id']} signed in")
+        return {"created": created, "token": sign_in["token"], "expires_at": sign_in["expires_at"],
+                "status": checkins.build_status(conn, participant, strategy_names())}
 
 
-@router.get("/api/participants/{code}/status")
-def get_status(code: str) -> dict:
-    """Which check-ins are due today, latest PHQ-9 result, preference."""
+@router.get("/api/me/status")
+def get_status(request: Request) -> dict:
+    """The signed-in participant's status: check-ins due today, latest PHQ-9 result, preference."""
     with closing(db.get_connection()) as conn:
-        participant = find_participant(conn, code)
+        participant = auth.require_participant(conn, request)
         return checkins.build_status(conn, participant, strategy_names())
 
 
-@router.patch("/api/participants/{code}")
-def update_participant(code: str, body: ParticipantUpdate) -> dict:
-    """Save the preferred strategy and/or date of birth."""
+@router.patch("/api/me")
+def update_participant(body: ParticipantUpdate, request: Request) -> dict:
+    """Save the signed-in participant's preferred strategy and/or date of birth."""
     with closing(db.get_connection()) as conn:
-        participant = find_participant(conn, code)
+        participant = auth.require_participant(conn, request)
         fields = {}
         if body.preferred_strategy is not None:
             fields["preferred_strategy"] = check_preferred(body.preferred_strategy)
@@ -148,18 +147,27 @@ def update_participant(code: str, body: ParticipantUpdate) -> dict:
         return checkins.build_status(conn, participant, strategy_names())
 
 
+@router.post("/api/logout")
+def logout(request: Request) -> dict:
+    """"Switch participant": delete this sign-in token so it can never be used again."""
+    with closing(db.get_connection()) as conn:
+        auth.revoke_token(conn, request)
+        conn.commit()
+    return {"signed_out": True}
+
+
 @router.post("/api/demo/advance")
-def demo_advance(body: DemoAdvance) -> dict:
+def demo_advance(body: DemoAdvance, request: Request) -> dict:
     """Pretend days have passed (preview buttons). Only exists in demo mode."""
     if not config.DEMO_MODE:
         raise HTTPException(404, "Not found")
     if not 0 <= body.days <= 60:
         raise HTTPException(400, "days must be between 0 and 60.")
     with closing(db.get_connection()) as conn:
-        participant = find_participant(conn, body.code)
+        participant = auth.require_participant(conn, request)
         new_offset = (participant["demo_day_offset"] or 0) + body.days
         db.update_participant(conn, participant["id"], {"demo_day_offset": new_offset})
         conn.commit()
         participant = db.get_participant(conn, participant["code"])
-        print(f"[demo] {participant['code']} demo date moved +{body.days} days (offset now {new_offset})")
+        print(f"[demo] participant #{participant['id']} demo date moved +{body.days} days (offset now {new_offset})")
         return checkins.build_status(conn, participant, strategy_names())

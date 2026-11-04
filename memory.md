@@ -147,6 +147,12 @@ Mock mode: set `LLM_API_KEY=` (empty) and restart.
 - **Developer's run:** connected to their real Supabase project (`aws-0-ap-northeast-1` = **Tokyo**), all 4 tables with RLS on, 3 issued codes created. Advice: keep Tokyo as the test project; create the study project in Mumbai (`ap-south-1`) (K-10). **Later the same day:** the developer switched `DATABASE_URL` to a new Mumbai project; start-up created the tables, `create_codes.py --count 3` and `safety_report.py` ran against `aws-0-ap-south-1`. K-10 resolved. Those 3 codes were also pasted in chat, so they count as test codes.
 - **Heads-up:** the developer's `.env` already has `DATABASE_URL`, so after `git pull` + `pip install -r requirements.txt` the local app writes to Supabase.
 
+### After Phase 10: user isolation with sign-in tokens (4 Nov 2026) ✅ done
+- **Developer's question:** "do we have user isolation?" Audit: data was already scoped per code and sessions were ownership-checked, but the code was the credential on every request (in URLs and logs), and only sign-in was rate-limited.
+- **Developer chose option C:** server-issued sign-in tokens (D-60). New `backend/auth.py`, table `auth_tokens` (hashes only), `/api/me/status`, `PATCH /api/me`, `/api/logout`, `code` removed from all other requests, logs without codes, `SIGN_IN_HOURS=12`. A crisis message with an expired token still gets the safety reply.
+- **Verified:** 30-check isolation test (B can't read, change or chat into A's data; no token = 401; expiry, logout, withdrawal; only hashes stored) on SQLite, Postgres and the starter; production mode with issued codes; browser test (token stored instead of code, no code in any URL, refresh keeps sign-in, Switch participant revokes the token); earlier UI suites 33/33 and 9/9.
+- **Lesson:** "every request is scoped to a code" is not the same as isolation when the code travels with every request. Authenticate once, then let the server decide who is asking.
+
 ### Phase 10 – Part 2: mentoring.md (4 Nov 2026) ✅ done
 - **Developer's instruction:** the checks are not their task (they only develop), so the dev chat ran all Phase 10 checks on a fresh clone of the branch: setup + both apps in mock mode, a script check that every file/function named in `mentoring.md` exists and every session has all spec 15.1 parts, and Sessions 4/6/7/9 "done when" checks with the finished functions and a fake model server. All passed.
 - **Built:** `mentoring.md` (overview, safety briefing script, 16 sessions, appendix with glossary, rubric, demo checklist, answer-key map, real bugs as teaching stories). Session 8 uses the developer's real classifier misses (T18, T21, T23).
@@ -182,3 +188,4 @@ Mock mode: set `LLM_API_KEY=` (empty) and restart.
 10. **Bigger isn't automatically better.** On a 6 GB GPU, `qwen3:8b` was 10× slower than the 4B instruct model and, while thinking was still on, produced no usable answers. Measure before switching models.
 11. **Test design can fake a bug.** Sending the same message repeatedly in one chat made the model copy itself, which looked like "strategies don't work". Compare conditions in separate, fresh conversations.
 12. **Explaining is reviewing.** Writing the session-by-session plan found a safety gap (spaced letters) that the test set didn't cover. Keep asking "what could slip through?"
+13. **Scope isn't isolation.** Data filtered by a code that is sent with every request still lets anyone with the code in. Sign in once, issue an expiring token, and decide on the server *who* is asking.

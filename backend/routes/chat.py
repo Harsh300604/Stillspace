@@ -14,10 +14,10 @@ import json
 import time
 from contextlib import closing
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
-from backend import checkins, classifier, config, db, llm, mock, prompt_builder, ratelimit, safety, strategy_policy
+from backend import auth, checkins, classifier, config, db, llm, mock, prompt_builder, ratelimit, safety, strategy_policy
 from backend.routes.sessions import load_session
 
 router = APIRouter()
@@ -29,8 +29,7 @@ META_KEYS = ["emotion", "intensity", "stage", "risk", "confidence", "rationale"]
 
 
 class ChatBody(BaseModel):
-    session_id: int
-    code: str  # checked against the session's owner (D-55)
+    session_id: int  # must belong to the signed-in participant (D-55, D-60)
     message: str
     requested_strategy: str | None = "Automatic"
 
@@ -86,8 +85,15 @@ def generate_reply(prompt: list[dict], strategy_name: str, turn: int) -> tuple[d
     return result, "llm"
 
 
+def unsigned_safety_reply() -> dict:
+    """The fixed crisis reply for a request whose sign-in has expired (not stored)."""
+    return {"reply": safety.crisis_response(), "requested_strategy": None, "classified_strategy": None,
+            "used_strategy": "Safety", "meta": {}, "safety": {"flag": "keyword", "helplines": safety.HELPLINES},
+            "source": "safety", "model": None, "latency_ms": 0}
+
+
 @router.post("/api/chat")
-def chat(body: ChatBody) -> dict:
+def chat(body: ChatBody, request: Request) -> dict:
     """Reply to one user message using the full pipeline, and store both messages."""
     message = body.message.strip()
     if not message:
@@ -97,7 +103,16 @@ def chat(body: ChatBody) -> dict:
 
     started = time.perf_counter()
     with closing(db.get_connection()) as conn:
-        session = load_session(conn, body.session_id, body.code)
+        try:
+            participant = auth.require_participant(conn, request)  # who is asking: from the sign-in token
+        except HTTPException:
+            # An expired sign-in must never block the crisis reply. Nothing is stored,
+            # because we no longer know who is asking (D-60).
+            if safety.find_crisis_match(message):
+                print("[chat] strategy=Safety safety=keyword source=safety (sign-in expired, not stored)")
+                return unsigned_safety_reply()
+            raise
+        session = load_session(conn, body.session_id, participant)
 
         # Step 1: deterministic safety check, BEFORE any AI call (spec 11.5).
         rule_id = safety.find_crisis_match(message)
@@ -126,7 +141,6 @@ def chat(body: ChatBody) -> dict:
         strategy = next(s for s in strategies if s["name"] == used)
 
         # Step 5: prompt = system text + strategy + meta + check-in context + history.
-        participant = db.get_participant_by_id(conn, session["participant_id"])
         context = checkins.checkin_context(conn, participant)
         prompt = prompt_builder.build_messages(strategy, meta, context, history, message)
         # print("[chat] DEBUG system prompt:\n" + prompt[0]["content"])  # DEBUG: print system prompt

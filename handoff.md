@@ -34,7 +34,7 @@ Around the chat there are optional **check-ins**: a one-time setup, a daily mood
 | 6 | `mentoring.md` | If you teach a student: the 16 one-hour sessions | 1 h |
 | 7 | `docs/DEPLOYMENT.md` | If you deploy: Supabase, Railway/Render, the pre-launch checklist | 30 min |
 | — | `decisions.md` | The reasoning behind design choices (readable narrative) | as needed |
-| — | `implementation.md` | Phase-by-phase build record, numbered decisions (D-01…D-59) and known issues (K-01…K-11) | as needed |
+| — | `implementation.md` | Phase-by-phase build record, numbered decisions (D-01…D-60) and known issues (K-01…K-11) | as needed |
 | — | `memory.md` | Build journal: what went wrong and how it was fixed; lessons for the mentor | as needed |
 | — | `docs/TROUBLESHOOTING.md` | Look up any error message | as needed |
 | — | `Stillspace_Build_Specification.docx` | The original specification the build follows | as needed |
@@ -103,6 +103,7 @@ backend/            Python server (FastAPI)
   checkins.py       PHQ-9 scoring and bands, what's due, prompt context
   db.py, db_connect.py  SQL helpers; SQLite or Postgres
   ratelimit.py      message and sign-in limits (online)
+  auth.py           sign-in tokens: every request is tied to the signed-in participant
   routes/           config, participants, checkins, sessions, chat endpoints
   data/             strategy sets, crisis keywords, prompt .txt files, schemas, consent text
 frontend/           index.html, styles.css, app.js (the mentor's mockup design, wired to the API)
@@ -129,7 +130,16 @@ Follow `docs/DEPLOYMENT.md`. In short:
 4. **Participant codes:** from your laptop with the same `DATABASE_URL`, run `python scripts/create_codes.py --count 20`. Only these codes can sign in online. Hand them out privately.
 5. **Complete the pre-launch checklist** (`docs/DEPLOYMENT.md` §5) **before sharing the link**.
 
-**What production mode switches on:** only issued codes can sign in; age question (18+, or under-18 with guardian confirmation); the study's consent text; 40 messages per hour per participant and 700 per day for the app (the safety reply is never blocked); session ownership checks; demo tools and `/docs` turned off.
+**What production mode switches on:** only issued codes can sign in; age question (18+, or under-18 with guardian confirmation); the study's consent text; 40 messages per hour per participant and 700 per day for the app (the safety reply is never blocked); demo tools and `/docs` turned off.
+
+### User isolation (in every mode)
+The participant code is typed **once**. Sign-in returns a random **sign-in token**, and the browser sends it with every request (`Authorization: Bearer …`). `backend/auth.py` finds the participant **from the token**, so a request can only ever reach the signed-in person's own data. Session ids are checked against that participant too.
+- Tokens expire after `SIGN_IN_HOURS` (default 12) and are deleted on *Switch participant* and when a participant is deleted.
+- Only a SHA-256 hash of each token is stored (table `auth_tokens`, RLS on in Supabase).
+- Codes never appear in web addresses or server logs (logs show the internal participant number).
+- A crisis message is answered with the safety reply even if the sign-in has expired.
+- Verified by a 30-check isolation test on SQLite and Postgres: participant B cannot read, change or chat into anything of A's (D-60).
+- **Remaining limit:** the code itself is still the sign-in secret (no password, by spec design). Hand codes out privately. A PIN or password could be added later if the study needs it.
 
 ## 7. Before real participants: non-negotiable
 

@@ -71,6 +71,7 @@ DATABASE_URL = _get_text("DATABASE_URL", "")  # empty = SQLite file; set = Postg
 CHAT_LIMIT_PER_HOUR = _get_int("CHAT_LIMIT_PER_HOUR", 40)  # per participant
 DAILY_CHAT_LIMIT = _get_int("DAILY_CHAT_LIMIT", 700)  # whole app, protects the model budget
 LOGIN_LIMIT_PER_MINUTE = _get_int("LOGIN_LIMIT_PER_MINUTE", 10)  # per IP address
+SIGN_IN_HOURS = _get_int("SIGN_IN_HOURS", 12)  # how long a sign-in token stays valid (D-60)
 AGE_POLICY = _get_text("AGE_POLICY", "18plus_or_guardian")  # or 18plus_only
 if IS_PRODUCTION:
     DEMO_MODE = False  # preview-day buttons must never be available online

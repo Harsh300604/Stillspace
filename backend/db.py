@@ -57,6 +57,7 @@ def delete_participant_data(conn: Connection, participant_id: int) -> dict:
         counts["messages"] += run(conn, "DELETE FROM messages WHERE session_id = ?", (session_id,)).rowcount
     counts["checkins"] = run(conn, "DELETE FROM checkins WHERE participant_id = ?", (participant_id,)).rowcount
     counts["sessions"] = run(conn, "DELETE FROM sessions WHERE participant_id = ?", (participant_id,)).rowcount
+    counts["sign_ins"] = run(conn, "DELETE FROM auth_tokens WHERE participant_id = ?", (participant_id,)).rowcount
     counts["participants"] = run(conn, "DELETE FROM participants WHERE id = ?", (participant_id,)).rowcount
     return counts
 

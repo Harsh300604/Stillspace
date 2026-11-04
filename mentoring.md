@@ -314,7 +314,7 @@ All paths are relative to the **starter folder** (student) or the **project fold
 1. Open `backend/main.py`. Find: where the app is created (`FastAPI(...)`), where routes are plugged in (`include_router`), where the page is served (`/` and `/static`). *Question:* "Which file answers `/api/config`?"
 2. Open `backend/routes/config_route.py` → `get_config()`. Read the dictionary it returns. Note the comment about the API key and the strategy instructions staying on the server.
 3. In the browser, open **http://localhost:8001/api/config**. Find `strategies`, `helplines`, `mock_mode`. (Chrome/Edge show a "Pretty-print" tick box.)
-4. Open DevTools (**F12**) → **Network** tab → reload the app page → click `config`. Show *Headers* (GET) and *Response*. *Then* send a chat message and find the `chat` request (POST) and its JSON body: `session_id`, `code`, `message`, `requested_strategy`.
+4. Open DevTools (**F12**) → **Network** tab → reload the app page → click `config`. Show *Headers* (GET) and *Response*. *Then* send a chat message and find the `chat` request (POST) and its JSON body: `session_id`, `message`, `requested_strategy`. Under *Request Headers* find `Authorization: Bearer …`: the **sign-in token**. *Question:* "The body has no participant code. How does the server know whose chat this is?" (From the token: `backend/auth.py` → `require_participant()`. The code is sent only once, at sign-in, so nobody can ask for someone else's data by changing a code.)
 5. Open `frontend/app.js`, search `async function api`. "Every call to the server goes through this one helper."
 6. **First change:** open `backend/data/strategies_4.json`. Change the `description` of **Reassurance** (e.g. add "Use when the user fears the worst."). Save.
    *Hint 1:* JSON needs double quotes and commas between items. *Hint 2:* if the app shows "could not start", a comma or quote is missing; VS Code underlines the error in red.
@@ -1273,6 +1273,7 @@ Real problems from building the reference app, useful as examples when the stude
 | **The copying chat (D-45)** | The same message sent repeatedly in one chat made the model copy itself; strategies "looked broken" | Compare conditions in fresh sessions | 10 |
 | **The honest score** | The mock classifier scored 93% because one person wrote the rules *and* the test labels | Ask who made the test set | 8 |
 | **Guessable sessions (D-55)** | Online, session ids were numbers, so anyone could read another person's chat | Check ownership on the server; never trust the browser | 16 (extension) |
+| **Code in every request (D-60)** | The code was sent with every request and appeared in web addresses and logs; any endpoint could be used to try codes | Sign in once, then use an expiring random token; the server decides *who* is asking | 3, 16 |
 | **Windows quirks** | `setx` needs a new terminal; PowerShell strips `\"`; scripts disabled by default | Most "code problems" are environment problems | 2 |
 
 ---

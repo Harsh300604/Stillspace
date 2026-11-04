@@ -32,6 +32,8 @@
 
 **There are no accounts, passwords or emails** (spec section 4). A participant is just a **pseudonymous code** such as `P001` or `SS-7K3M-Q9TX`. The code is the only thing that links a person to their answers, so their name is never stored.
 
+The code is typed **once**, at sign-in. The server then gives the browser a random **sign-in token**, and every later request carries that token instead of the code. The server works out *who* is asking from the token, so nobody can reach another person's data by sending a different code or session number (D-60).
+
 ### Local mode: "sign-up" happens automatically
 ```mermaid
 flowchart LR
@@ -62,9 +64,10 @@ flowchart LR
 ### Staying signed in, signing out, other devices
 | Situation | What happens |
 |---|---|
-| Refresh the page (F5) | Still signed in (the code is kept in this browser tab's `sessionStorage`) and taken to whatever is due |
+| Refresh the page (F5) | Still signed in (the sign-in token is kept in this browser tab's `sessionStorage`; the code is not stored) and taken to whatever is due |
 | Close the tab and come back | Type the code again (nothing is remembered between tabs, on purpose) |
-| **Switch participant** link (sidebar) | Signs out in this tab and returns to the consent page |
+| **Switch participant** link (sidebar) | Signs out: the token is deleted on the server and in the tab; back to the consent page |
+| After 12 hours (`SIGN_IN_HOURS`) | The sign-in expires; the page asks for the code again. A crisis message still gets the safety reply |
 | Another computer or phone | Works: type the same code (online mode) |
 | Forgot the code | The researcher looks it up in their private code list; there is no "reset password" |
 
@@ -90,7 +93,7 @@ flowchart TD
 | **2c. Every two weeks** | PHQ-9 (9 questions) + wellbeing questions | `type fortnightly` → server scores PHQ-9; total only if all 9 answered; item 9 > 0 sets a flag |
 | **3. Conversation** | Chat with badges showing the strategy; side panel shows emotion · intensity · stage | `POST /api/sessions` (once) then `POST /api/chat` per message → `sessions`, `messages` |
 | **4. Reflection** | 3 optional questions | `POST /api/sessions/{id}/end`, then `type post_session` (or Skip = nothing saved) |
-| **5. Summary** | Time, messages, latest PHQ-9, strategy bars, reflection | `GET /api/sessions/{id}/summary?code=…` |
+| **5. Summary** | Time, messages, latest PHQ-9, strategy bars, reflection | `GET /api/sessions/{id}/summary` |
 
 **What's due is decided by the server** (`backend/checkins.py`), using the date in `APP_TIMEZONE` (Asia/Kolkata):
 - **setup** → due until it's done once
@@ -177,7 +180,7 @@ flowchart LR
 |---|---|
 | Can new users sign up? | **Local:** yes, by typing a new code. **Online:** no; the researcher issues codes. |
 | Can users log in? | Yes, by typing their code (online: plus age question and consent). No password. |
-| Can a user see someone else's data? | No. Every request is tied to the code, and online codes are random and unguessable. Session ids are checked against the code. |
+| Can a user see someone else's data? | No. After sign-in every request carries a sign-in token, and the server takes the participant **from the token**: there is no way to ask for another person's data. Session ids are checked against that participant. Online codes are random and sign-in attempts are limited, so codes can't be guessed. Tokens expire and only their hash is stored. |
 | What does a user need? | A browser and their code. Nothing to install. |
 | What does the person running it need? | Local: Python + this project (`docs/SETUP.md`). Online: Supabase + OpenRouter + Railway/Render (`docs/DEPLOYMENT.md`). |
 | Does it work without internet? | Yes, in **mock mode** (no API key) or with Ollama. |

@@ -74,7 +74,7 @@ This applies to the mentor, the student, or anyone running a session, whether du
 
 ## 6. Online version (Phase 11)
 
-Online (`APP_ENV=production`) adds: only researcher-issued codes can sign in, an age question with guardian consent for under-18s, the study's consent text, message limits that **never** block the safety reply, session ownership checks, and no demo or `/docs` pages. The app **refuses to start** without `FOLLOWUP_CONTACT`. Details and the pre-launch checklist: `docs/DEPLOYMENT.md`.
+Online (`APP_ENV=production`) adds: only researcher-issued codes can sign in, an age question with guardian consent for under-18s, the study's consent text, message limits that **never** block the safety reply, **sign-in tokens** so every request only reaches the signed-in person's own data (session ownership checked too), and no demo or `/docs` pages. The app **refuses to start** without `FOLLOWUP_CONTACT`. Details and the pre-launch checklist: `docs/DEPLOYMENT.md`.
 
 ## 7. Data and privacy
 

@@ -39,21 +39,25 @@ const tones = ['#d9eadb', '#f4e9b8', '#f5d2b4', '#efc7c7'];
 
 // 3-20 letters, digits or hyphens (issued codes look like SS-7K3M-Q9TX); stored upper-case (D-09, D-48).
 const CODE_PATTERN = /^[A-Za-z0-9-]{3,20}$/;
-const CODE_STORAGE_KEY = 'stillspace_code';
+// CHANGED (D-60): after sign-in the server gives a sign-in token. The tab keeps
+// the TOKEN (not the code) and sends it with every request; the server finds the
+// participant from it, so a request can never reach someone else's data.
+const TOKEN_STORAGE_KEY = 'stillspace_token';
 
 // sessionStorage can throw (private windows, blocked storage), so every access
-// is wrapped: the app must still work, it just forgets the code on refresh.
-function loadStoredCode() {
-  try { return sessionStorage.getItem(CODE_STORAGE_KEY) || ''; } catch (e) { return ''; }
+// is wrapped: the app must still work, it just forgets the sign-in on refresh.
+function loadStoredToken() {
+  try { return sessionStorage.getItem(TOKEN_STORAGE_KEY) || ''; } catch (e) { return ''; }
 }
-function storeCode(code) {
-  try { sessionStorage.setItem(CODE_STORAGE_KEY, code); } catch (e) { /* ignore */ }
+function storeToken(token) {
+  try { sessionStorage.setItem(TOKEN_STORAGE_KEY, token); } catch (e) { /* ignore */ }
 }
-function clearStoredCode() {
-  try { sessionStorage.removeItem(CODE_STORAGE_KEY); } catch (e) { /* ignore */ }
+function clearStoredToken() {
+  try { sessionStorage.removeItem(TOKEN_STORAGE_KEY); } catch (e) { /* ignore */ }
 }
 
-let participantCode = loadStoredCode();
+let authToken = loadStoredToken();
+let participantCode = '';  // shown in the side bar; filled from the server's status
 
 // CHANGED: the participant's status from the server (what is due, latest PHQ-9,
 // saved answers). null means nobody is signed in yet.
@@ -94,6 +98,7 @@ function setLoading(change) {
 // into an Error with a friendly message (never a stack trace).
 async function api(path, options = {}) {
   const request = { method: options.method || 'GET', headers: {} };
+  if (authToken) request.headers['Authorization'] = 'Bearer ' + authToken;  // who is asking (D-60)
   if (options.body !== undefined) {
     request.headers['Content-Type'] = 'application/json';
     request.body = JSON.stringify(options.body);
@@ -108,6 +113,10 @@ async function api(path, options = {}) {
     }
     let data = null;
     try { data = await response.json(); } catch (e) { /* empty or non-JSON body */ }
+    if (response.status === 401 && authToken) {
+      // Sign-in expired or revoked: back to the consent page to enter the code again.
+      signedOut();
+    }
     if (!response.ok) {
       // FastAPI puts a readable message in "detail"; validation errors use a list, so fall back.
       const detail = data && typeof data.detail === 'string' ? data.detail : null;
@@ -309,8 +318,9 @@ async function login(target) {
   $('begin').disabled = $('direct').disabled = true;
   try {
     const result = await api('/api/participants', { method: 'POST', body: { code, age_group: ageGroup, guardian_consent: guardianOk } });
+    authToken = result.token;
+    storeToken(authToken);
     participantCode = result.status.code;
-    storeCode(participantCode);
     applyStatus(result.status);
     if (target === 'chat') enterChat(); else routeByStatus();
   } catch (error) {
@@ -325,6 +335,7 @@ async function login(target) {
 // saved answers. Used after sign-in, refresh and the demo day buttons.
 function applyStatus(newStatus) {
   status = newStatus;
+  participantCode = newStatus.code;
   preferred = newStatus.preferred_strategy;
   const moodIndex = MOOD_LABELS.indexOf(newStatus.today_mood);
   mood = moodIndex >= 0 ? moodIndex : null;
@@ -361,7 +372,7 @@ function goToNextDue() {
 // Due/Done labels always show what is really stored.
 async function saveCheckin(type, answers, extra = {}) {
   try {
-    const result = await api('/api/checkins', { method: 'POST', body: { code: participantCode, type, answers, ...extra } });
+    const result = await api('/api/checkins', { method: 'POST', body: { type, answers, ...extra } });
     status = result.status;
     return result;
   } catch (error) {
@@ -406,7 +417,7 @@ async function saveMood() {
 async function savePreference() {
   if (!status) return;
   try {
-    status = await api(`/api/participants/${encodeURIComponent(participantCode)}`, { method: 'PATCH', body: { preferred_strategy: preferred } });
+    status = await api('/api/me', { method: 'PATCH', body: { preferred_strategy: preferred } });
   } catch (error) {
     notify(error.message);
   }
@@ -415,7 +426,7 @@ async function savePreference() {
 // Demo buttons: move this participant's demo date on the server, then reload status.
 async function previewVisit(days) {
   try {
-    applyStatus(await api('/api/demo/advance', { method: 'POST', body: { code: participantCode, days } }));
+    applyStatus(await api('/api/demo/advance', { method: 'POST', body: { days } }));
     tab = status.fortnightly_due ? 'fortnight' : 'daily';  // same choice as the mockup
     unlocked = Math.max(unlocked, 1);
     go(1);
@@ -541,7 +552,7 @@ function chat() {
 // CHANGED: create the chat session the first time the chat is opened (spec section 12).
 async function ensureSession() {
   if (sessionId || !status) return sessionId;
-  const result = await api('/api/sessions', { method: 'POST', body: { code: participantCode } });
+  const result = await api('/api/sessions', { method: 'POST' });
   sessionId = result.session_id;
   return sessionId;
 }
@@ -550,7 +561,7 @@ async function ensureSession() {
 // opens the reflection. If ending fails, the reflection still opens.
 async function finishChat() {
   if (sessionId) {
-    try { await api(`/api/sessions/${sessionId}/end`, { method: 'POST', body: { code: participantCode } }); } catch (error) { notify(error.message); }
+    try { await api(`/api/sessions/${sessionId}/end`, { method: 'POST' }); } catch (error) { notify(error.message); }
   }
   advance();
 }
@@ -597,7 +608,7 @@ async function requestReply(text) {
   const token = epoch;  // if "New session" is pressed meanwhile, ignore this answer
   try {
     await ensureSession();
-    const result = await api('/api/chat', { method: 'POST', body: { session_id: sessionId, code: participantCode, message: text, requested_strategy: preferred } });
+    const result = await api('/api/chat', { method: 'POST', body: { session_id: sessionId, message: text, requested_strategy: preferred } });
     if (token !== epoch) return;
     if (result.used_strategy) implemented = result.used_strategy;
     const safetyInfo = result.safety && result.safety.flag !== 'none' ? result.safety : null;
@@ -647,7 +658,7 @@ function summary() {
   $('view').innerHTML = mobile() + '<div class="survey"><p class="sub" role="status">Loading your session summary…</p></div>';
   renderContext();
   const token = epoch;
-  api(`/api/sessions/${sessionId}/summary?code=${encodeURIComponent(participantCode)}`).then(data => {
+  api(`/api/sessions/${sessionId}/summary`).then(data => {
     if (token !== epoch || step !== 4) return;
     summaryData = data;
     drawSummary();
@@ -699,9 +710,23 @@ function reset() {
   enterChat();
 }
 
-// CHANGED: forget the code in this tab and go back to the consent page.
+// CHANGED: sign out on the server (the token stops working), forget it in this
+// tab and go back to the consent page.
 function switchParticipant() {
-  clearStoredCode();
+  if (authToken) api('/api/logout', { method: 'POST' }).catch(() => { /* already invalid: fine */ });
+  resetSignIn();
+}
+
+// CHANGED (D-60): the server said the sign-in is no longer valid (expired, or the
+// participant was deleted). Clear everything and ask for the code again.
+function signedOut() {
+  resetSignIn();
+  notify('Your sign-in has expired. Please enter your participant code again.');
+}
+
+function resetSignIn() {
+  clearStoredToken();
+  authToken = '';
   participantCode = ''; status = null; sessionId = null; ageGroup = null; guardianOk = false; chatError = null; sessionSafetyFlag = false; lastReply = null; summaryData = null;
   epoch++;
   step = unlocked = 0; consent = false; mood = null; preferred = 'Automatic'; implemented = null; tab = 'fortnight';
@@ -734,16 +759,16 @@ async function start() {
     $('retryStart').onclick = start;
     return;
   }
-  // CHANGED: a code kept in this tab means the person already consented and
-  // signed in, so a refresh does not log them out (spec section 12).
-  if (participantCode) {
+  // CHANGED: a sign-in token kept in this tab means the person already consented
+  // and signed in, so a refresh does not log them out (spec section 12, D-60).
+  if (authToken) {
     try {
-      applyStatus(await api(`/api/participants/${encodeURIComponent(participantCode)}/status`));
+      applyStatus(await api('/api/me/status'));
       consent = true;
       routeByStatus();
       return;
     } catch (error) {
-      // Unknown code (e.g. the database was deleted): fall back to the consent page.
+      // Expired token or deleted database: fall back to the consent page.
       status = null;
     }
   }

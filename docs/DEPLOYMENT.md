@@ -76,6 +76,7 @@ Both run the app without Docker. Use the branch you want to deploy (e.g. `main` 
 | `CHAT_LIMIT_PER_HOUR` | `40` |
 | `DAILY_CHAT_LIMIT` | `700` |
 | `LOGIN_LIMIT_PER_MINUTE` | `10` |
+| `SIGN_IN_HOURS` | `12` (how long a sign-in token stays valid) |
 | `APP_TIMEZONE` | `Asia/Kolkata` |
 | `STRATEGY_SET` | `strategies_4` |
 | `INCLUDE_CHECKINS_IN_PROMPT` | `true` |

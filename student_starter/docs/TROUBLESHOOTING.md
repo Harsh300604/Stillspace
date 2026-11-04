@@ -39,7 +39,9 @@
 | Participant code refused locally | Only letters, digits and hyphens, 3–20 characters | E.g. `P001` (no spaces or symbols). |
 | Code refused online ("This participant code is not valid") | Online, only codes from `create_codes.py` work | Use an issued code; create new ones if needed. Codes made before the Phase 11 fix must be re-created. |
 | "Too many sign-in attempts" | 10 attempts per minute per IP | Wait a minute. |
-| Signed out after closing the tab | The code is kept per tab only, on purpose | Type the code again. |
+| Signed out after closing the tab | The sign-in is kept per tab only, on purpose | Type the code again. |
+| "Your sign-in has expired. Please enter your participant code again." | The sign-in token is older than `SIGN_IN_HOURS` (12), or the participant was signed out or deleted | Type the code again. Testing an API call by hand? Send the header `Authorization: Bearer <token>` from the sign-in answer. |
+| Error 401 from `/api/...` in DevTools | Request sent without a valid sign-in token | Sign in again; every endpoint except `POST /api/participants` and `/api/config` needs the token. |
 | Conversation gone after a refresh | A refresh starts a new chat session (messages stay in the database) | Known limitation (K-07). |
 
 ## The AI model

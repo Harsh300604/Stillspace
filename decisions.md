@@ -251,6 +251,18 @@ Each entry has:
 
 ---
 
+## 10b. User isolation: sign-in tokens (D-60)
+
+- **The question:** can one participant's sensitive data (date of birth, PHQ-9, chats) ever reach another? Before this change every query was already filtered by the participant's code and sessions were ownership-checked (D-55). But the **code itself travelled with every request**, appeared in web addresses and logs, and only the sign-in endpoint limited attempts.
+- **The decision (the developer chose it):** authenticate once, then use a **server-issued, expiring, random token**. The server takes the participant from the token on every request (`auth.require_participant`), so there is no request a person can make that names someone else.
+- **Details that matter:** 256-bit tokens; only SHA-256 hashes stored; 12-hour expiry; deleted on *Switch participant* and on withdrawal; logs use the internal participant number. Supabase RLS is on for the new table too.
+- **Safety first, still:** a crisis message is answered with the fixed helpline reply even if the sign-in has expired. It is not stored, because we no longer know who sent it.
+- **Why it's the expected practice:** this is the standard session-management pattern (OWASP), and a "reasonable security safeguard" under India's DPDP Act 2023.
+- **What remains:** the code is still the only sign-in secret (no password, by the spec's design, K-12). Codes must be handed out privately.
+- **Cost:** a small deviation from the spec's API contract (code in paths and bodies), applied to the starter as well, so the student learns the safer pattern (mentoring Session 3).
+
+---
+
 ## 11. Scope decisions
 
 - **Classifier (D-21):** prompt-based with Qwen. A trained DistilBERT/DeBERTa classifier is a documented **stretch idea only** (spec section 3 puts it out of scope; 30 test messages are too few to train on; the ESConv dataset would be the source).
@@ -273,3 +285,4 @@ Each entry has:
 | 4 Nov 2026 | Phase 10 (part 1) | Handover docs, flow.md, student starter design (D-57) |
 | 4 Nov 2026 | after Phase 7 | Deployment plan: Supabase + online safety as Phase 11 (D-46 to D-50); developer's choices on hosting, ages, limits, no alerts (D-49 to D-51) |
 | 4 Nov 2026 | Phase 10 part 2 | `mentoring.md` section added (D-58, D-59) |
+| 4 Nov 2026 | after Phase 10 | User isolation with sign-in tokens (D-60), K-12 |

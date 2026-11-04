@@ -71,6 +71,7 @@ message ─▶ 1 safety.find_crisis_match ──match──▶ fixed crisis repl
 | `routes/checkins.py` | `POST /api/checkins`: setup, daily (merged per day), PHQ-9, reflection | 11 |
 | `routes/sessions.py` | Start, end and summary of a chat session (ownership checked) | 11 |
 | `ratelimit.py` | Message and sign-in limits kept in memory | (online) |
+| `auth.py` | Sign-in tokens: issue, check (`require_participant`), revoke | 11 |
 
 ### Data and prompts (`backend/data/`): editable without touching code
 
@@ -98,6 +99,7 @@ message ─▶ 1 safety.find_crisis_match ──match──▶ fixed crisis repl
 | `participants` | a participant code | `code`, `dob`, `preferred_strategy`, `setup_done`, `demo_day_offset`, `age_group`, `guardian_consent`, `consent_at`, `issued` |
 | `checkins` | one saved check-in | `type` (setup/daily/fortnightly/post_session), `answers_json` (skipped = key absent, never 0), `phq_total`/`phq_band` (only if all 9 answered), `item9_flag`, `local_date`, `session_id` |
 | `sessions` | one conversation | `started_at`, `ended_at`, `chat_seconds` |
+| `auth_tokens` | one active sign-in | `participant_id`, `token_hash` (SHA-256, never the token), `created_at`, `expires_at` |
 | `messages` | one chat message | `role`, `text`, `requested_strategy`, `classified_strategy`, `used_strategy`, `meta_json` (emotion, intensity, stage, risk, …), `safety_flag`, `source` (llm/mock/safety/fallback), `model`, `latency_ms` |
 
 Look inside: **DB Browser for SQLite** → open `data/stillspace.db` → *Browse Data*. Or export everything: `python scripts/export_data.py` (CSV files in `exports/`).
@@ -107,15 +109,18 @@ Look inside: **DB Browser for SQLite** → open `data/stillspace.db` → *Browse
 | Endpoint | Purpose |
 |---|---|
 | `GET /api/config` | Settings the page needs |
-| `POST /api/participants` | Sign in (local: a new code creates the participant) |
-| `GET /api/participants/{code}/status` | What's due, latest PHQ-9, preference, saved answers |
-| `PATCH /api/participants/{code}` | Save preferred strategy / date of birth |
+| `POST /api/participants` | Sign in with `{code, …}` → **sign-in token** + status (local: a new code creates the participant). The only endpoint that takes the code |
+| `GET /api/me/status` | What's due, latest PHQ-9, preference, saved answers |
+| `PATCH /api/me` | Save preferred strategy / date of birth |
 | `POST /api/checkins` | Save a check-in (server scores PHQ-9) |
 | `POST /api/sessions` | Start a chat session |
-| `POST /api/chat` | `{session_id, code, message, requested_strategy}` → reply + strategy + meta + safety |
-| `POST /api/sessions/{id}/end` | `{code}` → store end time |
-| `GET /api/sessions/{id}/summary?code=…` | Summary page data |
+| `POST /api/chat` | `{session_id, message, requested_strategy}` → reply + strategy + meta + safety |
+| `POST /api/sessions/{id}/end` | Store end time |
+| `GET /api/sessions/{id}/summary` | Summary page data |
+| `POST /api/logout` | "Switch participant": the token stops working |
 | `POST /api/demo/advance` | Move the demo date (local demo mode only) |
+
+**Who is asking (sign-in tokens, D-60).** After sign-in, the browser sends `Authorization: Bearer <token>` with every request. `backend/auth.py` → `require_participant()` finds the participant **from the token**, so a request can only reach the data of the person who signed in. Session ids are also checked against that participant. Tokens expire after `SIGN_IN_HOURS` (default 12), are deleted on *Switch participant*, and only their SHA-256 hash is stored (table `auth_tokens`). A crisis message with an expired token still gets the fixed safety reply (not stored).
 
 ## 6. How to switch things (only `.env` changes)
 

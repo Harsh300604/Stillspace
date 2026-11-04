@@ -5,30 +5,23 @@ A session is one conversation. It starts when the chat is first opened and
 ends when the person clicks "Finish & reflect". The summary page is built from
 what the server stored, not from what the browser remembers.
 
-Session ids are simple numbers (1, 2, 3...), so every request also sends the
-participant code, and the server checks that the session belongs to it (D-55).
-Otherwise anyone could guess another person's session id online.
+Session ids are simple numbers (1, 2, 3...), so the server always checks that
+the session belongs to the signed-in participant (from the sign-in token,
+auth.py). Otherwise anyone could guess another person's session id (D-55, D-60).
 """
 
 from contextlib import closing
 from datetime import datetime
 
-from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
+from fastapi import APIRouter, HTTPException, Request
 
-from backend import checkins, config, db
-from backend.routes.participants import find_participant
+from backend import auth, checkins, config, db
 
 router = APIRouter()
 
 
-class SessionBody(BaseModel):
-    code: str
-
-
-def load_session(conn, session_id: int, code: str) -> dict:
-    """Get a session that belongs to this participant code, or answer 404 (same answer either way)."""
-    participant = find_participant(conn, code)
+def load_session(conn, session_id: int, participant: dict) -> dict:
+    """Get a session that belongs to this participant, or answer 404 (same answer either way)."""
     session = db.get_session(conn, session_id)
     if session is None or session["participant_id"] != participant["id"]:
         raise HTTPException(404, "Chat session not found. Please start a new session.")
@@ -41,21 +34,21 @@ def seconds_between(start_iso: str, end_iso: str) -> int:
 
 
 @router.post("/api/sessions")
-def start_session(body: SessionBody) -> dict:
-    """Create a new chat session for a participant."""
+def start_session(request: Request) -> dict:
+    """Create a new chat session for the signed-in participant."""
     with closing(db.get_connection()) as conn:
-        participant = find_participant(conn, body.code)
+        participant = auth.require_participant(conn, request)
         session_id = db.create_session(conn, participant["id"])
         conn.commit()
-    print(f"[chat] new session {session_id} for {participant['code']}")
+    print(f"[chat] new session {session_id} for participant #{participant['id']}")
     return {"session_id": session_id}
 
 
 @router.post("/api/sessions/{session_id}/end")
-def end_session(session_id: int, body: SessionBody) -> dict:
+def end_session(session_id: int, request: Request) -> dict:
     """Store ended_at and chat_seconds. The server's clock is used, not the browser's (D-13)."""
     with closing(db.get_connection()) as conn:
-        session = load_session(conn, session_id, body.code)
+        session = load_session(conn, session_id, auth.require_participant(conn, request))
         ended_at = db.now_iso()
         chat_seconds = seconds_between(session["started_at"], ended_at)
         db.end_session(conn, session_id, ended_at, chat_seconds)
@@ -65,11 +58,11 @@ def end_session(session_id: int, body: SessionBody) -> dict:
 
 
 @router.get("/api/sessions/{session_id}/summary")
-def session_summary(session_id: int, code: str) -> dict:
-    """Message count, chat time, strategy counts, latest PHQ-9 and reflection answers (?code=...)."""
+def session_summary(session_id: int, request: Request) -> dict:
+    """Message count, chat time, strategy counts, latest PHQ-9 and reflection answers."""
     with closing(db.get_connection()) as conn:
-        session = load_session(conn, session_id, code)
-        participant = db.get_participant_by_id(conn, session["participant_id"])
+        participant = auth.require_participant(conn, request)
+        session = load_session(conn, session_id, participant)
         # A session that was never ended counts up to now.
         chat_seconds = session["chat_seconds"]
         if chat_seconds is None:

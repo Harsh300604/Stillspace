@@ -9,11 +9,11 @@ running in someone's browser.
 from contextlib import closing
 from typing import Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
-from backend import checkins, db
-from backend.routes.participants import check_dob, check_preferred, find_participant, strategy_names
+from backend import auth, checkins, db
+from backend.routes.participants import check_dob, check_preferred, strategy_names
 
 router = APIRouter()
 
@@ -21,7 +21,6 @@ CHECKIN_TYPES = {"setup", "daily", "fortnightly", "post_session"}
 
 
 class CheckinBody(BaseModel):
-    code: str
     type: str
     answers: dict[str, Any] = {}
     session_id: int | None = None
@@ -89,12 +88,12 @@ def save_post_session(conn, participant, answers: dict, session_id: int | None) 
 
 
 @router.post("/api/checkins")
-def save_checkin(body: CheckinBody) -> dict:
+def save_checkin(body: CheckinBody, request: Request) -> dict:
     """Store one check-in. Returns the stored row and the updated status."""
     if body.type not in CHECKIN_TYPES:
         raise HTTPException(400, f"type must be one of: {', '.join(sorted(CHECKIN_TYPES))}")
     with closing(db.get_connection()) as conn:
-        participant = find_participant(conn, body.code)
+        participant = auth.require_participant(conn, request)  # whose check-in: from the token (D-60)
         if body.type == "setup":
             checkin_id = save_setup(conn, participant, body.answers)
         elif body.type == "daily":
