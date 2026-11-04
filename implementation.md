@@ -39,7 +39,7 @@ Around the chat there are check-ins (setup, daily mood, PHQ-9 every 14 days, pos
 |---|---|---|---|
 | 0 | Write this plan | `implementation.md` | ✅ Approved |
 | 1 | Skeleton and config, D: drive setup | folders, `requirements.txt`, `.env.example`, `.gitignore`, `backend/config.py`, `backend/main.py`, `backend/routes/config_route.py`, `backend/data/strategies_4.json`, `backend/data/strategies_esconv8.json`, placeholder `frontend/index.html`, `docs/mockup/Stillspace-2.html` | ✅ Done – checks 1–5 passed |
-| 2 | Frontend port | `frontend/index.html`, `frontend/styles.css`, `frontend/app.js` | ⬜ Not started |
+| 2 | Frontend port | `frontend/index.html`, `frontend/styles.css`, `frontend/app.js` | 🔨 Built – waiting for your checks |
 | 3 | Database, participants, check-ins | `backend/db.py`, `backend/checkins.py`, `backend/routes/participants.py`, `backend/routes/checkins.py`, demo endpoint, `backend/main.py`, `frontend/app.js` | ⬜ Not started |
 | 4 | LLM client, mock mode, basic chat | `backend/llm.py`, `backend/mock.py`, `backend/routes/chat.py`, `backend/data/prompts/plain_system.txt`, `frontend/app.js` | ⬜ Not started |
 | 5 | Safety layer | `backend/safety.py`, `backend/data/crisis_keywords.json`, `backend/data/prompts/crisis_response.txt`, `eval/safety_prompts.csv`, `backend/routes/chat.py`, `backend/routes/checkins.py`, `frontend/app.js`, `frontend/styles.css` (safety badge only) | ⬜ Not started |
@@ -150,6 +150,19 @@ The API key is **never** included.
 
 **Goal:** the mockup served by FastAPI, looking identical, with only the section 12 changes that don't need a database yet.
 
+**Status:** 🔨 Built – waiting for your checks.
+
+**What was done / deviations:**
+- `styles.css` is the mockup CSS **byte for byte**, plus a small block at the end marked "Stillspace additions": the footer disclaimer style, a desktop chat height 35 px shorter to make room for it, and a red hint colour for an invalid participant code.
+- `index.html` is the mockup markup, laid out on separate lines for readability. `#view` is now a `<div>` inside `.center`, so the footer disclaimer (spec 16) sits under every step. The About dialog has a single accurate text (the mockup overwrote the dialog from JS; that overwrite was removed).
+- `app.js` is the mockup JS, reformatted onto readable lines with every change marked `CHANGED:`. Not-yet-connected parts are marked `STUB (Phase N)`. New: the `api(path, options)` helper (JSON, friendly errors, `aria-busy` loading state), a `notify()` toast, start-up that loads `/api/config` first (with a friendly "could not start" box and Try again if the server is down), and participant-code validation stored in `sessionStorage` (wrapped in try/catch).
+- Strategy lists (side panel, mobile panel, setup select, setup hint line, summary bars) are built from `/api/config`. Each option shows the strategy's description as a tooltip (spec 11.1 says descriptions are shown in the UI).
+- Consent: both buttons stay **disabled** until the box is ticked **and** the code is valid. A hint line under the checkbox says what is missing. The code is stored upper-case.
+- The chat header line and the consent text depend on `mock_mode` from `/api/config` (e.g. "Mock mode · replies are not from an AI model"). The full "Mock mode" tag comes in Phase 4.
+- The preview-day card and the "preview day N" label only show when `demo_mode` is true (spec 12). They still work in the browser until Phase 3.
+- **Kept for now** (to be changed in the phase that makes them true): the risk panel's "chat assessment not connected" line (Phase 5), "Reset demo" (Phase 3/8), and the mentor's provisional-wording notes ("Sample daily question · replace with your final wording").
+- The dev chat only checked JS syntax (`node --check`) and searched the files for the words in check 4. Nothing was run in a browser.
+
 **Reference:** `docs/mockup/Stillspace-2.html` (added in Phase 1).
 
 **Files:**
@@ -160,18 +173,21 @@ The API key is **never** included.
 
 **Manual checks:**
 
-1. Server running. Open http://localhost:8000 in one tab and `docs/mockup/Stillspace-2.html` (double-click it) in another.
-   **Expect:** same colours, fonts, sidebar steps and right panel.
-2. Toggle dark mode, press A+ and A−, then narrow the window below 700 px.
-   **Expect:** all behave exactly like the mockup, and the mobile layout appears.
-3. On the consent step try Continue (a) with nothing, (b) box ticked but no code, (c) code `ab` (too short), (d) code `P 01!` (invalid characters), (e) box ticked and code `P001`.
-   **Expect:** (a)–(d) are blocked with a visible message; only (e) continues.
-4. In Terminal B:
+Before you start: `git pull origin claude/gracious-euler-tlrs89`, make sure `.env` has `STRATEGY_SET=strategies_4`, start the server, and press **Ctrl+F5** in the browser (to skip any cached page).
+
+1. Open http://localhost:8000 in one tab, and `D:\CreatED-cloud\stillspace\docs\mockup\Stillspace-2.html` (double-click it in Explorer) in another. Click through both: welcome, check-ins (all 3 tabs), chat (send a message), reflection, summary.
+   **Expect:** same colours, fonts, sidebar steps and right panel. The only visible differences are the participant code field, the reworded texts and the one-line disclaimer under every step.
+2. Toggle **◐ Theme**, press **A＋** a few times and **A−**, then narrow the window below 700 px (or press F12 → device toolbar → a phone).
+   **Expect:** dark mode, text size and the mobile layout (☰ menu, collapsible "Risk · Support & mood" box) work exactly like the mockup.
+3. On the welcome page, try: (a) nothing entered, (b) box ticked but no code, (c) code `ab`, (d) code `P 01!`, (e) box ticked and code `p001`.
+   **Expect:** in (a)–(d) both buttons stay disabled and the hint line says what is missing. In (c) and (d) the hint is red ("letters and digits, 3–20 characters"). In (e) both buttons are enabled and continuing works. Press F5 afterwards: the code field shows `P001` (kept in sessionStorage, upper-cased).
+4. In a second PowerShell window, in `D:\CreatED-cloud\stillspace`:
    ```powershell
    Select-String -Path frontend\* -Pattern "scripted","nothing is stored","not stored","no AI" -SimpleMatch
    ```
-   **Expect:** no output. The footer disclaimer "Student research prototype. Not therapy, diagnosis or an emergency service. In an emergency call 112 or Tele-MANAS 14416." is visible on every step.
-5. (Extra) Press F12 → Console. **Expect:** no red errors. The strategy dropdowns list the 4 strategies from `/api/config` (switch to esconv8 and reload: 8 appear).
+   **Expect:** no output. The disclaimer "Student research prototype. Not therapy, diagnosis or an emergency service. In an emergency call 112 or Tele-MANAS 14416." is visible under every step.
+5. (Extra) Press F12 → Console and reload. **Expect:** no red errors. The side panel and setup dropdowns list the 4 strategies. Hovering over an option shows its description (in Chrome/Edge the tooltip may only appear on the closed dropdown). Switch `.env` to `strategies_esconv8`, restart and reload: 8 strategies appear in the dropdowns and the summary bars. Switch back.
+6. (Extra) Stop the server (Ctrl+C) and reload the page. **Expect:** a friendly "Stillspace could not start" box with **Try again** (no blank page). Start the server again and click **Try again**: the welcome page appears.
 
 ---
 
@@ -221,6 +237,11 @@ The API key is **never** included.
 
 **Manual checks:**
 
+0. (Model availability, D-23; no key needed) In PowerShell:
+   ```powershell
+   (Invoke-RestMethod https://openrouter.ai/api/v1/models).data | Where-Object id -like "qwen/*" | Select-Object id, context_length | Format-Table -AutoSize
+   ```
+   **Expect:** a list of Qwen model IDs that includes `qwen/qwen3-8b`. If it is missing, pick the closest Qwen model from the list and set `LLM_MODEL` in `.env`.
 1. `.env` has no `LLM_API_KEY`. Restart, go to chat, send "I had a long day".
    **Expect:** a reply in about 0.6 s, and a small **"Mock mode"** tag visible. Terminal A logs a line like `[chat] source=mock 601ms`.
 2. Put a real OpenRouter key in `.env` (`LLM_API_KEY=sk-or-...`), restart, send three messages that refer back to each other.
@@ -243,7 +264,7 @@ The API key is **never** included.
 - `backend/safety.py`: `check_message(text)`, `crisis_response()`, `phq_item9_flag(answers)`, `HELPLINES`
 - `backend/data/crisis_keywords.json`: phrases and regexes (English plus common Hinglish), matched on word boundaries
 - `backend/data/prompts/crisis_response.txt`: fixed text with Tele-MANAS 14416 / 1-800-891-4416 and 112; mentions `FOLLOWUP_CONTACT` if set
-- `eval/safety_prompts.csv`: 15 synthetic, non-graphic rows: `id,message,expect` (`crisis` / `normal`)
+- `eval/safety_prompts.csv`: 30 synthetic, non-graphic rows (D-22): `id,message,expect` (`crisis` / `normal`)
 - `backend/routes/chat.py`: safety check before any LLM call; safety replies logged with `source="safety"`
 - `backend/routes/checkins.py`: uses `safety.phq_item9_flag`
 - `frontend/app.js` + `frontend/styles.css`: "Safety response" badge with distinct styling and helpline numbers; risk indicator rule from spec 11.5
@@ -435,6 +456,9 @@ Things the spec leaves open or gets slightly wrong. In each case I picked the si
 | D-18 | The mockup is also kept as `docs/mockup/Stillspace-2.html` (unchanged). | Needed for the Phase 2 side-by-side check and the final "design matches" acceptance check. |
 | D-19 | Extra checks marked "(Extra)" or "(Quick extra check)" are added to some phases. The spec's numbered checks are all kept. | Faster verification. You can skip them. |
 | D-20 | The project folder is `D:\CreatED-cloud\stillspace`, not `D:\Projects\stillspace` (your choice). Caches stay in `D:\cache\...` and `D:\ollama\models`. | Still on D:. The code only uses paths relative to the project root, so nothing else changes. |
+| D-21 | **Classifier = Qwen with a prompt** (your suggestion 1, and also the spec). Training a separate DistilBERT/DeBERTa classifier is a **stretch idea only**. It is documented in `docs/ARCHITECTURE.md` and as optional extension work in `mentoring.md` (Phase 10), and no code is written for it. | Spec section 3 puts training a separate classifier out of scope. The 30-row `eval/test_messages.csv` is far too small to train on. A real attempt would use the strategy-labelled ESConv dataset and reuse `scripts/eval_classifier.py` to compare. |
+| D-22 | **Safety is strengthened, never weakened** (your suggestion 2). The spec already runs a deterministic keyword/regex check **before** any LLM call (the LLM is never called on a match) and the classifier's `risk` only adds a second net. Phase 5 adds: (a) text normalisation before matching (lower-case, curly→straight apostrophes, collapsed spaces, stretched letters like `dieee`→`die`, simple digit/symbol swaps like `k1ll`); (b) English, romanised Hinglish **and** Devanagari phrases; (c) `eval/safety_prompts.csv` grows from 15 to **30** synthetic, non-graphic rows (20 crisis incl. indirect, Hinglish and misspelled; 10 tricky normal ones such as "this exam is killing me"); (d) every keyword hit is logged with the matched pattern ID so false positives can be reviewed. | Extra protection, at no cost to the mock or offline modes. The fixed crisis reply with Tele-MANAS 14416 / 1-800-891-4416 and 112 is unchanged. |
+| D-23 | **Model choice is still open** (your suggestion 3). The default stays `qwen/qwen3-8b` via OpenRouter (spec section 4) until you confirm availability with the command in Phase 4 check 0. The spec doesn't name a **mental-health fine-tuned** model. Community fine-tunes are usually published as weights on Hugging Face, not on OpenRouter, so the likely route is **Ollama** on the dev laptop (models on `D:\ollama\models`). If the two models are on different providers, Phase 9's `--models` will accept a provider prefix (e.g. `ollama:<model>`). This is decided when you name the model. | No model is assumed without your confirmation. Only `.env` and the `--models` argument change. |
 
 ---
 
@@ -445,3 +469,5 @@ Things the spec leaves open or gets slightly wrong. In each case I picked the si
 | K-01 | ~~`Stillspace-2.html` was not in the repository.~~ | **Resolved:** you attached it, and it is now committed as `docs/mockup/Stillspace-2.html` (unchanged). |
 | K-02 | The `qwen/qwen3-8b` model ID and its availability on OpenRouter can change over time. | If Phase 4 check 2 fails with "model not found", only `LLM_MODEL` in `.env` needs to change. |
 | K-03 | The keyword safety check can't catch every indirect phrasing, and may flag figures of speech. | It is backed by the classifier's `risk` check (Phase 7). False positives and negatives found in Phase 5 will be listed here. |
+| K-04 | The comparison model (mental-health fine-tuned) has not been chosen yet (D-23). | Needed before Phase 9. Phases 2–8 don't depend on it. |
+| K-05 | During Phases 2–3, some new texts already describe the finished app ("saved on this computer", "Replies are generated by an AI model"), but saving arrives in Phase 3 and real replies in Phase 4. Until then check-ins live only in the page, and chat answers come from placeholder replies in `app.js`. | Expected for a phased build. Fixed by Phases 3 and 4. |
