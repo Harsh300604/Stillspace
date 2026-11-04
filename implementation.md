@@ -47,7 +47,7 @@ Around the chat there are check-ins (setup, daily mood, PHQ-9 every 14 days, pos
 | 2 | Frontend port | `frontend/index.html`, `frontend/styles.css`, `frontend/app.js` | ✅ Done – checks passed |
 | 3 | Database, participants, check-ins | `backend/db.py`, `backend/checkins.py`, `backend/routes/participants.py`, `backend/routes/checkins.py`, demo endpoint, `backend/main.py`, `frontend/app.js`, `frontend/index.html` | ✅ Done – checks passed |
 | 4 | LLM client, mock mode, basic chat | `backend/llm.py`, `backend/mock.py`, `backend/routes/chat.py`, `backend/db.py`, `backend/main.py`, `backend/data/prompts/plain_system.txt`, `frontend/app.js`, `frontend/index.html`, `frontend/styles.css` | ✅ Done – checks passed |
-| 5 | Safety layer | `backend/safety.py`, `backend/data/crisis_keywords.json`, `backend/data/prompts/crisis_response.txt`, `eval/safety_prompts.csv`, `backend/routes/chat.py`, `backend/routes/checkins.py`, `frontend/app.js`, `frontend/styles.css` (safety badge only) | ⬜ Not started |
+| 5 | Safety layer | `backend/safety.py`, `backend/data/crisis_keywords.json`, `backend/data/prompts/crisis_response.txt`, `eval/safety_prompts.csv`, `backend/routes/chat.py`, `backend/checkins.py`, `frontend/app.js`, `frontend/styles.css`, `frontend/index.html` | 🔨 Built – waiting for your checks |
 | 6 | Strategy classifier | `backend/classifier.py`, `backend/data/prompts/classifier.txt`, strategy JSON review, `backend/mock.py`, `eval/test_messages.csv`, `scripts/eval_classifier.py` | ⬜ Not started |
 | 7 | Prompt builder and strategy-aware replies | `backend/prompt_builder.py`, `backend/strategy_policy.py`, `backend/data/prompts/system.txt`, `backend/routes/chat.py`, `frontend/app.js` | ⬜ Not started |
 | 8 | Reflection, summary, export | `backend/routes/chat.py` (end + summary), `frontend/app.js`, `scripts/export_data.py` | ⬜ Not started |
@@ -314,30 +314,48 @@ Before you start: `git pull origin claude/gracious-euler-tlrs89`, restart the se
 
 **Goal:** deterministic crisis detection that works in every mode, with the fixed crisis reply, the safety badge, the PHQ item-9 rule in `safety.py`, and the risk indicator.
 
+**Status:** 🔨 Built – waiting for your checks.
+
 **Files:**
-- `backend/safety.py`: `check_message(text)`, `crisis_response()`, `phq_item9_flag(answers)`, `HELPLINES`
-- `backend/data/crisis_keywords.json`: phrases and regexes (English plus common Hinglish), matched on word boundaries
-- `backend/data/prompts/crisis_response.txt`: fixed text with Tele-MANAS 14416 / 1-800-891-4416 and 112; mentions `FOLLOWUP_CONTACT` if set
-- `eval/safety_prompts.csv`: 30 synthetic, non-graphic rows (D-22): `id,message,expect` (`crisis` / `normal`)
-- `backend/routes/chat.py`: safety check before any LLM call; safety replies logged with `source="safety"`
-- `backend/routes/checkins.py`: uses `safety.phq_item9_flag`
-- `frontend/app.js` + `frontend/styles.css`: "Safety response" badge with distinct styling and helpline numbers; risk indicator rule from spec 11.5
+- `backend/safety.py`: `normalise()`, `variants()`, `find_crisis_match()` (returns the rule id), `check_message()` (True/False), `crisis_response()`, `phq_item9_flag()`, `HELPLINES`
+- `backend/data/crisis_keywords.json`: 36 phrases + 13 regex patterns (English, romanised Hinglish, Devanagari), each with an `id`
+- `backend/data/prompts/crisis_response.txt`: fixed reply with Tele-MANAS 14416 / 1-800-891-4416 and 112; `{followup_line}` is filled from `FOLLOWUP_CONTACT`
+- `eval/safety_prompts.csv`: **30** synthetic, non-graphic rows (`id,message,expect,category`): 20 crisis (direct, indirect, self-harm, stretched letters, look-alike digits, s.e.p.a.r.a.t.e.d, curly apostrophe, danger, Hinglish, Devanagari, slang) and 10 tricky normal ones. Saved as UTF-8 with BOM so Excel shows Devanagari correctly.
+- `backend/routes/chat.py`: step 1 of the pipeline. On a match, **no AI call**: the fixed reply is stored with `source="safety"`, `used_strategy="Safety"`, `safety_flag="keyword"` and `meta_json={"matched_rule": "<id>"}`.
+- `backend/checkins.py`: PHQ item 9 now uses `safety.phq_item9_flag()` (D-30, same behaviour).
+- `frontend/app.js` + `styles.css`: the safety reply has its own style (the mockup's follow-up colours), the badge says **"Safety response"**, and helplines are tap-to-call links. The risk indicator shows "Follow-up needed" after a safety reply in this session. The PHQ item-9 notice now also shows helplines (and the follow-up contact if set), as spec 11.5 requires.
+- `frontend/index.html`: the About dialog says chat is checked for crisis words, and that the check can miss things.
+
+**What was done / deviations:**
+- **Normalisation before matching (D-22, D-40):** lower case; curly → straight apostrophes, then apostrophes removed (`can't` = `cant`); look-alike swaps inside words (`k1ll`, `$uicide`, `su1cide`) but **not** `!` (so "die!" still matches); dots/dashes between letters removed (`s.u.i.c.i.d.e`); stretched letters checked both ways (`dieee` → `die`, `killlll` → `kill`).
+- English and Hinglish phrases match whole words only (spec: word boundaries). Devanagari phrases match as text, because Python's word boundary breaks on Devanagari vowel signs.
+- A safety reply sets the session flag. "＋ New session" (or a refresh, which starts a new session) clears it; the latest PHQ item-9 rule still applies.
+- **Automated verification (dev chat):** all 30 rows correct directly (`check_message`) and in the browser in mock mode (20/20 crisis with 14416 + 112 + "Safety response", 10/10 normal). Crisis replies also work with a **wrong key** (0–3 ms, no AI call) and with a model server (that server received **0** calls for the crisis message). `FOLLOWUP_CONTACT` appears in the crisis reply and the PHQ notice. 25 extra unseen crisis phrasings were all caught. 1 of 16 extra normal phrasings was flagged: **"I love the movie suicide squad"**, kept on purpose (K-03). Phases 3 and 4 regression checks still pass.
 
 **Manual checks:**
 
-1. Open `eval/safety_prompts.csv`. Send each row with `expect=crisis` in chat.
-   **Expect:** every one gets the same fixed crisis text containing **14416** and **112**, and the badge **"Safety response"** in its distinct style.
-2. Send each row with `expect=normal` (e.g. "this exam is killing me").
-   **Expect:** normal replies, not crisis responses. Write down any false positives for the Known issues section.
-3. (Quick extra check, no server needed) In Terminal B:
+Before you start: `git pull origin claude/gracious-euler-tlrs89`, keep Terminal C (`ollama serve`) running for check 3b, restart uvicorn, press **Ctrl+F5**.
+
+1. Open `eval\safety_prompts.csv` (Excel or Notepad). In the chat, send every row with `expect` = **crisis** (S01–S20). Copy and paste them; you don't need to type them.
+   **Expect:** each one gets the same fixed reply in a gold box with a dark-orange left border, the badge **"Safety response"**, and the line "Tele-MANAS: 14416 or 1-800-891-4416 (free, 24x7) · Emergency: 112". Terminal A shows `[chat] strategy=Safety safety=keyword rule=<id> source=safety` and **no** model call.
+2. Send every row with `expect` = **normal** (N01–N10, e.g. "This exam is killing me").
+   **Expect:** normal AI replies (badge "AI reply" or "Mock reply"), with no helplines. Note any row that wrongly gets the crisis reply.
+3. Quick check without the browser (Terminal B):
    ```powershell
-   python -c "import csv; from backend.safety import check_message; [print(r['expect'], check_message(r['message']), r['message']) for r in csv.DictReader(open('eval/safety_prompts.csv', encoding='utf-8'))]"
+   python -c "import csv; from backend.safety import check_message; rows=list(csv.DictReader(open('eval/safety_prompts.csv', encoding='utf-8-sig'))); bad=[r for r in rows if check_message(r['message']) != (r['expect']=='crisis')]; print(len(rows), 'rows,', len(bad), 'mismatches'); [print('MISMATCH', r['id'], r['expect'], r['message']) for r in bad]"
    ```
-   **Expect:** every `crisis` row prints `True` and every `normal` row prints `False`.
-4. Repeat two crisis messages (a) in mock mode (no key) and (b) with the wrong key `sk-or-wrong`.
-   **Expect:** the crisis response still appears both times. Terminal A shows `safety=keyword` and no LLM call.
-5. After a safety reply, look at the right rail.
-   **Expect:** the risk indicator shows **"Follow-up needed"**. Start a new session as a participant with no flags: it shows "Not assessed". It never shows a percentage.
+   **Expect:** `30 rows, 0 mismatches`.
+4. Repeat two crisis messages (e.g. S01 and S17) (a) in **mock mode** (`LLM_API_KEY=` empty, restart) and (b) with a **broken model** (`LLM_MODEL=qwen3:doesnotexist`, restart).
+   **Expect:** the crisis reply appears instantly both times. In (b), a normal message afterwards shows the friendly error with Retry, proving the model really is broken. Put `.env` back afterwards.
+5. After any safety reply, look at the right rail.
+   **Expect:** the risk indicator shows **"Follow-up needed"** with "A message in this conversation needs a human follow-up…", and "Currently used by model" shows **Safety**. Click **＋ New session** (as a participant whose latest PHQ has item 9 = 0): it goes back to **"Not assessed"**. No percentage is ever shown.
+6. (Extra) Database check:
+   ```powershell
+   python -c "import sqlite3; c=sqlite3.connect('data/stillspace.db'); [print(r) for r in c.execute('select id, role, used_strategy, safety_flag, source, meta_json from messages where safety_flag != ? order by id desc limit 4', ('none',))]"
+   ```
+   **Expect:** user and assistant rows with `Safety`, `keyword`, source `safety` (assistant) and `{"matched_rule": "..."}`.
+7. (Extra) Set `FOLLOWUP_CONTACT=Ms Rao (study lead)` in `.env`, restart, send a crisis message, and answer PHQ item 9 with 1.
+   **Expect:** "You can also contact Ms Rao (study lead)…" in the crisis reply, and "Follow-up contact for this study: Ms Rao (study lead)" in the PHQ notice. Clear it again afterwards.
 
 ---
 
@@ -529,6 +547,7 @@ Things the spec leaves open or gets slightly wrong. In each case I picked the si
 | D-37 | **Zero-cost model route (your requirement, 4 Nov 2026): Ollama on the dev laptop.** App installed with `/DIR=D:\ollama\app`, models in `D:\ollama\models` (Phase 1 `OLLAMA_MODELS`). `.env`: `LLM_BASE_URL=http://localhost:11434/v1`, `LLM_API_KEY=ollama` (any non-empty text, because empty = mock mode), `LLM_MODEL=qwen3:8b` (the spec's model) or `qwen3:4b` on low-RAM laptops. OpenRouter stays documented as the paid option. | No API costs, and chat text never leaves the laptop (better for DPDP). Same OpenAI-compatible code path, so only `.env` changes. The fine-tuned comparison model (D-23) can run the same way. |
 | D-38 | **Two model setups, same code.** Dev/testing (you): Ollama `qwen3:8b`, free (D-37). **Handoff (student and mentor): OpenRouter with credits**, default `LLM_MODEL=qwen/qwen3-14b` in `.env.example` and `config.py`. `docs/SETUP.md` (Phase 10) will default to OpenRouter with a spending limit and mention Ollama as a free alternative. For the Phase 9 evaluation the student uses one model consistently and names it in the report. | Spec 2 and 15: hosted API, no GPU needed on the student's laptop. `qwen/qwen3-8b` is gone from OpenRouter; `qwen3-14b` is the same family, cheap (about $0.12 / $0.24 per 1M tokens), and its thinking can be switched off. |
 | D-39 | **Thinking control, tested on your Ollama 0.40.14 (4 Nov 2026).** `ollama run --think=false` and the `/no_think` text were ignored by the `qwen3:4b` tag. Over the API, `think: false` moved the thinking into a separate `reasoning` field (reply clean, but still slow and token-hungry). `reasoning_effort: "none"` put the thinking **into** the reply, ending in `</think>` with no opening tag. **So:** (a) `llm.py` sends `{"think": false}` to Ollama URLs (`11434`/`ollama`), `{"reasoning": {"enabled": false}}` to OpenRouter, and nothing to other providers; (b) `strip_thinking()` also removes text before a lone `</think>`; (c) use a Qwen3 **instruct** tag on Ollama (`qwen3:4b-instruct-2507-q4_K_M`), because the plain `qwen3:4b` tag is an always-thinking build. | Prevents thinking text from reaching a user with any model, and avoids empty "Fallback reply" answers caused by thinking using up the 300-token limit. |
+| D-40 | Safety details: (a) normalisation as described in Phase 5 (apostrophes removed; look-alike digits swapped inside words only; `!` never swapped; separators between letters removed; stretched letters checked both ways); (b) Devanagari phrases match as plain text; (c) the crisis user message is stored with `used_strategy="Safety"` and the matched rule id in `meta_json`; (d) the PHQ item-9 notice now shows the helplines and the follow-up contact; (e) the session safety flag resets on New session or refresh. | (a)–(b) catch common spelling tricks without false negatives; (c) makes false alarms reviewable; (d) spec 11.5 / section 4 table; (e) spec 11.5 says "in this session". |
 
 ---
 
@@ -538,7 +557,7 @@ Things the spec leaves open or gets slightly wrong. In each case I picked the si
 |---|---|---|
 | K-01 | ~~`Stillspace-2.html` was not in the repository.~~ | **Resolved:** you attached it, and it is now committed as `docs/mockup/Stillspace-2.html` (unchanged). |
 | K-02 | **Happened (Phase 4 check 0, 4 Nov 2026):** `qwen/qwen3-8b` is no longer listed on OpenRouter. The nearest paid options are `qwen/qwen3-14b` ($0.12 / $0.24 per 1M tokens) and `qwen/qwen3.5-9b`. | The handoff default is now `qwen/qwen3-14b` (D-38). The dev laptop uses local Ollama `qwen3:8b` (D-37). Re-run Phase 4 check 0 just before handoff. |
-| K-03 | The keyword safety check can't catch every indirect phrasing, and may flag figures of speech. | It is backed by the classifier's `risk` check (Phase 7). False positives and negatives found in Phase 5 will be listed here. |
+| K-03 | The keyword check can't catch every indirect phrasing, and can flag harmless text. **Known false positive:** "I love the movie suicide squad" (rule `en-suicide`), kept on purpose, because a false alarm is safer than a missed crisis. Figures of speech in the test set ("killing me", "dying to", "dead tired") are **not** flagged. | Backed by the classifier's `risk` check (Phase 7). Add more false positives or negatives here as you find them. |
 | K-04 | The comparison model (mental-health fine-tuned) has not been chosen yet (D-23). | Needed before Phase 9. Phases 2–8 don't depend on it. |
 | K-05 | ~~Chat answers came from placeholders in `app.js`.~~ | **Resolved in Phase 4:** replies come from `/api/chat` (mock or LLM) and are stored. |
 | K-06 | A mood or style chosen on the consent page **before** signing in is not saved: after sign-in the page shows what the server has stored. | Minor. Choose them after signing in. |

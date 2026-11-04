@@ -12,7 +12,8 @@
 | Item | Value |
 |---|---|
 | Last completed phase | **Phase 4** – LLM client, mock mode, basic chat |
-| Next phase | Phase 5 – Safety layer |
+| Current phase | **Phase 5 – Safety layer** (built, waiting for the developer's checks) |
+| Next phase | Phase 6 – Strategy classifier |
 | Branch | `claude/gracious-euler-tlrs89` (repo `harsh300604/stillspace`) |
 | Project folder (dev laptop) | `D:\CreatED-cloud\stillspace` |
 | Python | 3.11.9 (installed at `C:\Program Files\Python311`; venv and packages on D:) |
@@ -91,6 +92,16 @@ Mock mode: set `LLM_API_KEY=` (empty) and restart.
   5. Local models can be slow to start → `LLM_TIMEOUT_SECONDS` (D-36).
 - **Observation:** replies are a bit generic, which is expected with the plain prompt. Strategy instructions arrive in Phase 7.
 
+### Phase 5 – Safety layer (4 Nov 2026) 🔨 built, waiting for checks
+- **Built:** `backend/safety.py` (normalise → match → fixed reply), `crisis_keywords.json` (36 phrases + 13 patterns, each with an id), `prompts/crisis_response.txt`, `eval/safety_prompts.csv` (30 rows), the pipeline's step 1 in `routes/chat.py`, the "Safety response" styling, helplines in the PHQ item-9 notice, and the risk indicator after a safety reply.
+- **Design choice from the developer's Phase 2 suggestion:** safety never depends on the AI model. The keyword check runs first; on a match the AI is never called.
+- **Verified by the dev chat:** 30/30 rows (direct + browser, mock mode), crisis replies with a wrong key and with a model server (0 model calls for crisis messages), the follow-up contact shown, 25/25 extra unseen crisis phrasings caught, and Phase 3/4 regressions still green.
+- **Problems hit and fixes:**
+  - Swapping `!` → `i` (look-alike) would have turned "die!" into "diei" and **missed** a crisis → `!` is never swapped. A good example of a fix that looks harmless but could weaken safety.
+  - Python's `\b` word boundary does not work inside Devanagari words (vowel signs) → Devanagari phrases match as plain text.
+  - My test script choked on the CSV's Windows line endings (needed for Excel) → parse CSVs with a real CSV reader.
+- **Known false positive (kept on purpose):** "I love the movie suicide squad".
+
 ---
 
 ## Lessons for the mentor (collected so far)
@@ -102,3 +113,4 @@ Mock mode: set `LLM_API_KEY=` (empty) and restart.
 5. **"Thinking" models** can make a chatbot slow or leak reasoning text. Use instruct models.
 6. **Background apps can hold ports or ignore settings** (the Ollama tray app). When something "is already in use", look for a running copy.
 7. **Mock mode is the safety net for teaching.** Every session can run with no internet and no key.
+8. **Safety changes need a test set.** Every change to `crisis_keywords.json` or `safety.py` should be followed by the 30-row check (`30 rows, 0 mismatches`). Never add an exception for a false positive if it could hide a real crisis.

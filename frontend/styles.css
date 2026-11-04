@@ -20,3 +20,9 @@ body.dark .codehint.invalid{color:#f0a58c}
 /* Chat error line with a Retry button (Phase 4). */
 .chaterror{display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:var(--gold);border-radius:12px;padding:10px 14px;font-size:.82rem}
 .chaterror button{padding:6px 12px;font-size:.78rem}
+/* Safety response (Phase 5): same warm colours as the mockup's follow-up notice,
+   so it reads as "important, take care" rather than an ordinary reply. */
+.message.safety{border:1px solid #b2684c;border-left-width:5px;background:var(--gold);border-radius:14px;padding:14px 18px}
+.message.safety .safetybadge{color:var(--ink);font-weight:700}
+.helplines{font-size:.85rem;font-weight:600;margin:10px 0 0}
+.helplines a{font-weight:700}

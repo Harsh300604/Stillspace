@@ -87,15 +87,23 @@ Each entry has:
 ### Two independent nets (spec 11.5; D-22)
 - **Decision:** (1) a **keyword/regex check runs before any AI call**: on a match, the AI is never called and a fixed crisis reply with **Tele-MANAS 14416 / 1-800-891-4416** and **112** is returned; (2) the classifier's `risk: "high"` triggers the same fixed reply (Phase 7).
 - **Why:** the developer asked for a safety layer that does not depend on the AI model. A model can be offline, wrong, or not called at all in mock mode.
-- **Phase 5 strengthening (planned):** text normalisation (`dieee`, `k1ll`, curly quotes), English plus Hinglish plus Devanagari phrases, a safety test set grown from 15 to 30 synthetic rows, and every match logged with the pattern that caught it.
+- **Phase 5 strengthening (built, D-40):**
+  - **Normalise first:** lower case; apostrophes removed (`can't` = `cant`); look-alike digits swapped inside words (`k1ll`, `$uicide`); separators between letters removed (`s.u.i.c.i.d.e`); stretched letters checked two ways (`dieee`, `killlll`).
+  - **`!` is never swapped:** "die!" would have become "diei" and slipped through. *Lesson: a tidy-looking improvement can weaken safety, so always re-run the test set.*
+  - **Rules in a JSON file** with ids: 36 phrases (whole words; Devanagari as plain text) and 13 regex patterns for flexible wording (English, Hinglish, Devanagari).
+  - **Every match is logged** with its rule id (terminal and `meta_json`), so false alarms can be reviewed later.
+  - **Test set:** 30 synthetic rows (20 crisis, 10 tricky normal), all correct; 25 more unseen crisis phrasings were also caught.
+  - **Known false positive kept:** "suicide squad". No exception was added, because an exception could hide a real crisis.
+- **Alternatives considered:** asking the AI model to detect crises (rejected as the *only* net: it can be offline, wrong, or not called in mock mode; it is used as the *second* net in Phase 7); a large off-the-shelf toxicity model (not in the spec's package list, and not explainable to a student).
+- **Display:** the fixed reply in the mockup's warm follow-up colours, the badge "Safety response", tap-to-call helpline links, and "Follow-up needed" in the risk panel for the rest of the session.
 - **Teaching note:** discuss false positives ("this exam is killing me") versus false negatives (indirect phrasing). The student never writes crisis test messages: the developer supplies synthetic ones.
 
 ### AI errors never touch safety (D-32)
 - **Decision:** if the AI model fails (wrong key, no internet), the user sees a friendly error with **Retry** and nothing is stored. If the model returns an empty reply, a gentle fallback reply is shown.
 - **Why:** the safety check happens before the AI call, so a broken model cannot block a crisis reply.
 
-### PHQ-9 item 9 (D-30)
-- **Decision:** item 9 > 0 sets `item9_flag`, shows the follow-up notice and turns the risk indicator to "Follow-up needed", **independent of the total score**. The logic moves into `safety.py` in Phase 5.
+### PHQ-9 item 9 (D-30, D-40)
+- **Decision:** item 9 > 0 sets `item9_flag`, shows the follow-up notice **with the helpline numbers** (and the follow-up contact if set), and turns the risk indicator to "Follow-up needed", **independent of the total score**. The rule lives in `safety.phq_item9_flag()` since Phase 5.
 - **Never** shown: a computed risk percentage.
 
 ---
@@ -139,3 +147,4 @@ Each entry has:
 | Date | Phase | Change |
 |---|---|---|
 | 4 Nov 2026 | after Phase 4 | File created; covers D-01 to D-39 |
+| 4 Nov 2026 | Phase 5 | Safety section updated (D-40) |

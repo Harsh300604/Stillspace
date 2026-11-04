@@ -1,9 +1,9 @@
 # mentoring.md: Session 9 - Prompt builder
 """Chat sessions and POST /api/chat.
 
-Phase 4 version: a plain reply with no support strategy yet. Later phases add
-the steps from spec section 5 in this order:
-    1. keyword safety check        (Phase 5)
+Phase 5 version: keyword safety check, then a plain reply (no strategy yet).
+The steps from spec section 5, in order:
+    1. keyword safety check        (now)
     2. classifier                  (Phase 6/7)
     3. classifier-risk safety      (Phase 7)
     4. strategy policy             (Phase 7)
@@ -12,12 +12,14 @@ the steps from spec section 5 in this order:
     7. log everything              (now)
 """
 
+import json
+import time
 from contextlib import closing
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from backend import config, db, llm, mock
+from backend import config, db, llm, mock, safety
 from backend.routes.participants import find_participant
 
 router = APIRouter()
@@ -40,6 +42,31 @@ class ChatBody(BaseModel):
 def read_prompt(name: str) -> str:
     """Load a prompt file from backend/data/prompts/ (read each time, so edits apply without restart)."""
     return (config.PROMPTS_DIR / name).read_text(encoding="utf-8").strip()
+
+
+def safety_reply(conn, body: ChatBody, message: str, flag: str, rule_id: str, started: float) -> dict:
+    """Store and return the fixed crisis reply. No AI model is called on this path."""
+    reply = safety.crisis_response()
+    latency_ms = int((time.perf_counter() - started) * 1000)
+    meta = {"matched_rule": rule_id}  # which keyword rule fired, so false alarms can be reviewed
+    db.insert_message(conn, body.session_id, "user", message, requested_strategy=body.requested_strategy,
+                      used_strategy="Safety", safety_flag=flag, meta_json=json.dumps(meta))
+    db.insert_message(conn, body.session_id, "assistant", reply, requested_strategy=body.requested_strategy,
+                      used_strategy="Safety", safety_flag=flag, meta_json=json.dumps(meta),
+                      source="safety", latency_ms=latency_ms)
+    conn.commit()
+    print(f"[chat] strategy=Safety safety={flag} rule={rule_id} source=safety {latency_ms}ms")
+    return {
+        "reply": reply,
+        "requested_strategy": body.requested_strategy,
+        "classified_strategy": None,
+        "used_strategy": "Safety",
+        "meta": meta,
+        "safety": {"flag": flag, "helplines": safety.HELPLINES},
+        "source": "safety",
+        "model": None,
+        "latency_ms": latency_ms,
+    }
 
 
 def history_as_chat(rows) -> list[dict]:
@@ -67,9 +94,16 @@ def chat(body: ChatBody) -> dict:
     if len(message) > MAX_MESSAGE_CHARS:
         raise HTTPException(400, f"Messages can be at most {MAX_MESSAGE_CHARS} characters.")
 
+    started = time.perf_counter()
     with closing(db.get_connection()) as conn:
         if db.get_session(conn, body.session_id) is None:
             raise HTTPException(404, "Chat session not found. Please start a new session.")
+
+        # Step 1: deterministic safety check, BEFORE any AI call (spec 11.5).
+        rule_id = safety.find_crisis_match(message)
+        if rule_id:
+            return safety_reply(conn, body, message, "keyword", rule_id, started)
+
         # History is read BEFORE storing the new message, so it is not sent twice.
         history = history_as_chat(db.recent_messages(conn, body.session_id, config.HISTORY_TURNS))
         prompt = [{"role": "system", "content": read_prompt("plain_system.txt")}, *history,

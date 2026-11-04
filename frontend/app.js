@@ -6,8 +6,8 @@
   layout and behaviour are kept. Every change required by spec section 12 is
   marked with a "CHANGED:" comment so it is easy to compare with the mockup.
 
-  Phase 4 status: strategies, participants, check-ins and chat replies use the
-  server. Strategy-aware replies arrive in Phase 7. Look for "STUB (Phase N)".
+  Phase 5 status: strategies, participants, check-ins, chat replies and the
+  safety layer use the server. Strategy-aware replies arrive in Phase 7.
 */
 
 const $ = id => document.getElementById(id);
@@ -63,6 +63,7 @@ let finishing = false;  // stops a double click from saving a check-in twice
 // CHANGED: chat state for the server (Phase 4).
 let sessionId = null;   // id from POST /api/sessions; a new one for each "New session"
 let chatError = null;   // {message, text} after a failed send, shown with a Retry button
+let sessionSafetyFlag = false;  // true once any reply in this session was a safety response (spec 11.5)
 
 // Mood buttons are stored by name so the database is readable (same order as the buttons).
 const MOOD_LABELS = ['Low', 'Unsettled', 'Neutral', 'Okay', 'Good'];
@@ -172,12 +173,18 @@ function nav() {
 // CHANGED: also "Follow-up needed" when the latest saved PHQ-9 had item 9 > 0 (spec 11.5).
 // Phase 5 adds safety replies in this session to the same rule.
 function followUpNeeded() {
-  return phq[8] > 0 || Boolean(status && status.latest_phq && status.latest_phq.item9_flag);
+  return sessionSafetyFlag || phq[8] > 0 || Boolean(status && status.latest_phq && status.latest_phq.item9_flag);
+}
+
+// CHANGED: helpline numbers from /api/config (or from a safety reply), as tap-to-call links.
+function helplinesHtml(list) {
+  const lines = list && list.length ? list : (appConfig ? appConfig.helplines : []);
+  return `<p class="helplines">${lines.map(h => `${esc(h.name)}: <a href="tel:${esc(h.number)}">${esc(h.number)}</a>${h.alt ? ` or <a href="tel:${esc(h.alt.replace(/-/g, ''))}">${esc(h.alt)}</a>` : ''}${h.note ? ` (${esc(h.note)})` : ''}`).join(' · ')}</p>`;
 }
 
 function risk() {
   const flag = followUpNeeded();
-  return `<div class="riskbox"><div class="row" style="justify-content:space-between"><strong>Risk indicator</strong><span class="tag">Prototype</span></div><div class="gradient">${flag ? '<i class="marker" style="--position:92%"></i>' : ''}</div><div class="ends"><span>Lower concern</span><span>Higher concern</span></div><div class="riskstatus">${flag ? 'Follow-up needed' : 'Not assessed'}</div><p class="tiny">${flag ? 'A response to PHQ-9 item 9 needs a human follow-up. This is not a calculated risk level.' : 'No validated safety assessment is connected. Mood, stress and a low PHQ-9 score cannot establish safety.'}</p><div class="tiny">PHQ-9: ${Object.keys(phq).length}/9 answered · chat assessment not connected</div></div>`;
+  return `<div class="riskbox"><div class="row" style="justify-content:space-between"><strong>Risk indicator</strong><span class="tag">Prototype</span></div><div class="gradient">${flag ? '<i class="marker" style="--position:92%"></i>' : ''}</div><div class="ends"><span>Lower concern</span><span>Higher concern</span></div><div class="riskstatus">${flag ? 'Follow-up needed' : 'Not assessed'}</div><p class="tiny">${!flag ? 'No validated safety assessment is connected. Mood, stress and a low PHQ-9 score cannot establish safety.' : sessionSafetyFlag ? 'A message in this conversation needs a human follow-up. This is not a calculated risk level.' : 'A response to PHQ-9 item 9 needs a human follow-up. This is not a calculated risk level.'}</p><div class="tiny">PHQ-9: ${Object.keys(phq).length}/9 answered · chat checked for crisis words only</div></div>`;
 }
 
 // CHANGED: the select id is a parameter (the mockup used string replacement
@@ -393,9 +400,10 @@ function score() {
   return `<div class="scorebox"><div class="row" style="justify-content:space-between"><div><div class="eyebrow">Depression score · PHQ-9</div><strong>${complete ? total + ' / 27' : count ? total + ' so far' : '— / 27'}</strong></div><span class="tag">${count}/9 answered</span></div><div class="gradient">${count ? `<i class="marker" style="--position:${Math.max(1, Math.min(99, total / 27 * 100))}%"></i>` : ''}</div><div class="ends"><span>0 · Minimal</span><span>27 · Severe</span></div><p class="sub">${complete ? band + ' symptom range · screening result, not a diagnosis.' : 'Incomplete · no severity result. Unanswered questions are not scored as zero.'}</p></div>`;
 }
 
-// CHANGED: "This demo cannot assess..." -> "This app cannot assess..." (it is no longer just a demo).
+// CHANGED: "This demo cannot assess..." -> "This app cannot assess..." (it is no longer just a demo),
+// and helpline numbers (plus the follow-up contact, if set) are shown with the notice (spec 11.5).
 function alertHtml() {
-  return phq[8] > 0 ? `<div class="followup" role="status"><strong>A human follow-up matters here.</strong><p>Thank you for answering. This app cannot assess your immediate safety or contact anyone. If this reflects how you feel, consider reaching out to a trusted person or qualified mental health professional. If you may act on these thoughts now, contact local emergency services.</p><p class="tiny">This notice is triggered by item 9 independently of the total score. You can continue or skip to the chat.</p></div>` : '';
+  return phq[8] > 0 ? `<div class="followup" role="status"><strong>A human follow-up matters here.</strong><p>Thank you for answering. This app cannot assess your immediate safety or contact anyone. If this reflects how you feel, consider reaching out to a trusted person or qualified mental health professional. If you may act on these thoughts now, contact local emergency services.</p>${helplinesHtml()}${appConfig && appConfig.followup_contact ? `<p class="tiny">Follow-up contact for this study: ${esc(appConfig.followup_contact)}</p>` : ''}<p class="tiny">This notice is triggered by item 9 independently of the total score. You can continue or skip to the chat.</p></div>` : '';
 }
 
 function questionHeader(q) { return `<legend>${esc(q)}</legend>`; }
@@ -506,6 +514,7 @@ async function ensureSession() {
 
 // Badge text for a reply: the strategy once Phase 7 adds it, otherwise where the reply came from.
 function replyBadge(m) {
+  if (m.safety) return 'Safety response';
   if (m.strategy) return m.strategy;
   return { mock: 'Mock reply', fallback: 'Fallback reply' }[m.source] || 'AI reply';
 }
@@ -513,7 +522,7 @@ function replyBadge(m) {
 // CHANGED: badges no longer say "Sample welcome" / "... example".
 function drawMessages() {
   if (!$('messages')) return;
-  $('messages').innerHTML = `<div class="message"><div class="author">∿ Stillspace <span class="strategybadge">Welcome</span></div><p>Welcome. You can start wherever feels comfortable. Would you like to talk something through, feel heard, or explore a small next step?</p></div>` + messages.map(m => `<div class="message ${m.role}">${m.role === 'assistant' ? `<div class="author">∿ Stillspace <span class="strategybadge">${esc(replyBadge(m))}</span></div>` : ''}<p style="white-space:pre-wrap">${esc(m.text)}</p></div>`).join('') + (busy ? '<p class="tiny" role="status">Stillspace is typing…</p>' : '')
+  $('messages').innerHTML = `<div class="message"><div class="author">∿ Stillspace <span class="strategybadge">Welcome</span></div><p>Welcome. You can start wherever feels comfortable. Would you like to talk something through, feel heard, or explore a small next step?</p></div>` + messages.map(m => `<div class="message ${m.role}${m.safety ? ' safety' : ''}">${m.role === 'assistant' ? `<div class="author">∿ Stillspace <span class="strategybadge${m.safety ? ' safetybadge' : ''}">${esc(replyBadge(m))}</span></div>` : ''}<p style="white-space:pre-wrap">${esc(m.text)}</p>${m.safety ? helplinesHtml(m.safety.helplines) : ''}</div>`).join('') + (busy ? '<p class="tiny" role="status">Stillspace is typing…</p>' : '')
     + (chatError && !busy ? `<div class="chaterror" role="alert"><span>${esc(chatError.message)}</span><button type="button" id="retrySend">Retry</button></div>` : '');
   if ($('retrySend')) $('retrySend').onclick = retrySend;
   $('messages').scrollTop = $('messages').scrollHeight;
@@ -547,7 +556,9 @@ async function requestReply(text) {
     const result = await api('/api/chat', { method: 'POST', body: { session_id: sessionId, message: text, requested_strategy: preferred } });
     if (token !== epoch) return;
     if (result.used_strategy) implemented = result.used_strategy;
-    messages.push({ role: 'assistant', text: result.reply, strategy: result.used_strategy, source: result.source });
+    const safetyInfo = result.safety && result.safety.flag !== 'none' ? result.safety : null;
+    if (safetyInfo) sessionSafetyFlag = true;  // risk indicator -> "Follow-up needed"
+    messages.push({ role: 'assistant', text: result.reply, strategy: result.used_strategy, source: result.source, safety: safetyInfo });
   } catch (error) {
     if (token !== epoch) return;
     chatError = { message: error.message, text };
@@ -592,14 +603,14 @@ function reset() {
   if (messages.length && !confirm('Start a new session? Your check-ins stay saved; this conversation will be cleared from the screen.')) return;
   epoch++;
   messages = []; post = {}; implemented = null; busy = false; started = null; elapsed = 0;
-  sessionId = null; chatError = null;  // the next chat creates a fresh server session
+  sessionId = null; chatError = null; sessionSafetyFlag = false;  // the next chat creates a fresh server session
   enterChat();
 }
 
 // CHANGED: forget the code in this tab and go back to the consent page.
 function switchParticipant() {
   clearStoredCode();
-  participantCode = ''; status = null; sessionId = null; chatError = null;
+  participantCode = ''; status = null; sessionId = null; chatError = null; sessionSafetyFlag = false;
   epoch++;
   step = unlocked = 0; consent = false; mood = null; preferred = 'Automatic'; implemented = null; tab = 'fortnight';
   messages = []; phq = {}; extra = {}; daily = {}; setup = {}; post = {}; busy = false;

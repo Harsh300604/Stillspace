@@ -10,7 +10,7 @@ import sqlite3
 from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
-from backend import config, db
+from backend import config, db, safety
 
 PHQ_ITEMS = 9
 FORTNIGHT_DAYS = 14
@@ -44,7 +44,7 @@ def score_phq9(phq_answers: dict) -> dict:
         "total": total,
         "band": phq_band(total) if complete else None,
         "complete": complete,
-        "item9_flag": phq_answers.get("8", 0) > 0,
+        "item9_flag": safety.phq_item9_flag(phq_answers),  # rule lives in safety.py (D-30)
     }
 
 
