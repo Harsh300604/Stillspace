@@ -229,7 +229,7 @@ Before you start: `git pull origin claude/gracious-euler-tlrs89`, restart the se
 3. Go to **Finish & reflect → View summary → 14 days later**. On the two-week tab answer items 1–8 and leave item 9 unanswered, then click **Finish two-week check-in →**.
    **Expect:** the score box says "Incomplete · no severity result", and the toast says "…incomplete, so no total is stored". In a second terminal:
    ```powershell
-   python -c "import sqlite3; c=sqlite3.connect('data/stillspace.db'); print(c.execute(\"select id, phq_total, phq_band, phq_complete from checkins where type='fortnightly' order by id desc limit 1\").fetchone())"
+   python -c "import sqlite3; c=sqlite3.connect('data/stillspace.db'); print(c.execute('select id, phq_total, phq_band, phq_complete from checkins where type=? order by id desc limit 1', ('fortnightly',)).fetchone())"
    ```
    **Expect:** something like `(5, None, None, 0)`.
 4. Again **Finish & reflect → View summary → 14 days later**. Answer all 9 items, with item 9 = **1**, and save.
@@ -492,6 +492,7 @@ Things the spec leaves open or gets slightly wrong. In each case I picked the si
 | D-28 | Pressing a daily Finish button always stores a row, even with every question skipped. Picking a sidebar mood also stores today's daily row, so daily becomes "Done". | Mockup: "completion is an explicit action". Spec 11.6: the sidebar mood and the daily question write the same check-in. |
 | D-29 | Saving "Requested by you" (PATCH) is wired now rather than in Phase 7. Phase 7 check 3 still tests it. | It shares code with the setup preference built in this phase. |
 | D-30 | The PHQ item-9 rule lives in `checkins.score_phq9()` for now. Phase 5 moves it into `safety.phq_item9_flag()` as planned, without changing behaviour. | Phase 3 needs it before `safety.py` exists. |
+| D-31 | `python -c "..."` one-liners in this file only use **single quotes** inside. Values go in as `?` parameters. | Windows PowerShell 5.1 removes embedded `\"` quotes before passing them to Python, which caused a `SyntaxError` in Phase 3 check 3. This will be noted in docs/TROUBLESHOOTING.md (Phase 10). |
 
 ---
 
