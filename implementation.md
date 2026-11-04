@@ -24,6 +24,11 @@ Around the chat there are check-ins (setup, daily mood, PHQ-9 every 14 days, pos
 
 **Storage (spec section 6.1):** everything lives on **D:**: the project (`D:\CreatED-cloud\stillspace`), `.venv`, pip cache, temp files, HF/Ollama caches, the DB and exports. The code only uses paths relative to the project root (`pathlib`), never hard-coded drive letters.
 
+### Companion files (updated after every phase)
+
+- **`memory.md`**: project journal: the current state of the dev setup, what each phase built, how it was verified, problems hit and their fixes, lessons for the mentor.
+- **`decisions.md`**: the reasoning behind decisions, written for the mentor: grouped by topic, with alternatives and teaching notes. It uses the same D-IDs as the Decisions log below (this file keeps the short log the spec requires).
+
 ### How to use the checklists
 
 - Commands are **PowerShell**, run from `D:\CreatED-cloud\stillspace` with the venv active (prompt starts with `(.venv)`), unless a step says otherwise.
@@ -37,11 +42,11 @@ Around the chat there are check-ins (setup, daily mood, PHQ-9 every 14 days, pos
 
 | Phase | Goal | Main files created / changed | Status |
 |---|---|---|---|
-| 0 | Write this plan | `implementation.md` | ✅ Approved |
+| 0 | Write this plan | `implementation.md` (+ `memory.md`, `decisions.md` from Phase 4 on) | ✅ Approved |
 | 1 | Skeleton and config, D: drive setup | folders, `requirements.txt`, `.env.example`, `.gitignore`, `backend/config.py`, `backend/main.py`, `backend/routes/config_route.py`, `backend/data/strategies_4.json`, `backend/data/strategies_esconv8.json`, placeholder `frontend/index.html`, `docs/mockup/Stillspace-2.html` | ✅ Done – checks 1–5 passed |
 | 2 | Frontend port | `frontend/index.html`, `frontend/styles.css`, `frontend/app.js` | ✅ Done – checks passed |
 | 3 | Database, participants, check-ins | `backend/db.py`, `backend/checkins.py`, `backend/routes/participants.py`, `backend/routes/checkins.py`, demo endpoint, `backend/main.py`, `frontend/app.js`, `frontend/index.html` | ✅ Done – checks passed |
-| 4 | LLM client, mock mode, basic chat | `backend/llm.py`, `backend/mock.py`, `backend/routes/chat.py`, `backend/db.py`, `backend/main.py`, `backend/data/prompts/plain_system.txt`, `frontend/app.js`, `frontend/index.html`, `frontend/styles.css` | 🔨 Built – waiting for your checks |
+| 4 | LLM client, mock mode, basic chat | `backend/llm.py`, `backend/mock.py`, `backend/routes/chat.py`, `backend/db.py`, `backend/main.py`, `backend/data/prompts/plain_system.txt`, `frontend/app.js`, `frontend/index.html`, `frontend/styles.css` | ✅ Done – checks passed |
 | 5 | Safety layer | `backend/safety.py`, `backend/data/crisis_keywords.json`, `backend/data/prompts/crisis_response.txt`, `eval/safety_prompts.csv`, `backend/routes/chat.py`, `backend/routes/checkins.py`, `frontend/app.js`, `frontend/styles.css` (safety badge only) | ⬜ Not started |
 | 6 | Strategy classifier | `backend/classifier.py`, `backend/data/prompts/classifier.txt`, strategy JSON review, `backend/mock.py`, `eval/test_messages.csv`, `scripts/eval_classifier.py` | ⬜ Not started |
 | 7 | Prompt builder and strategy-aware replies | `backend/prompt_builder.py`, `backend/strategy_policy.py`, `backend/data/prompts/system.txt`, `backend/routes/chat.py`, `frontend/app.js` | ⬜ Not started |
@@ -254,7 +259,7 @@ Before you start: `git pull origin claude/gracious-euler-tlrs89`, restart the se
 
 **Goal:** chat works end to end with a plain (strategy-free) prompt, in mock mode and with a real key, with friendly errors.
 
-**Status:** 🔨 Built – waiting for your checks.
+**Status:** ✅ Done (4 Nov 2026). **Check 2 passed on your laptop** with Ollama `qwen3:4b-instruct-2507-q4_K_M`: coherent 2–5 sentence replies, no `<think>`, "AI reply" badge, and the 3rd reply named the meeting as the cause. Checks 1, 3, 4 and 5 were verified by the dev chat only (automated run); you chose to move on.
 
 **Files:**
 - `backend/llm.py`: `chat_completion(messages, temperature, max_tokens, model)` → `{"text", "model", "latency_ms"}`, `strip_thinking()`, `LLMError`. Thinking is switched off (D-15, D-33) and `<think>` text is always stripped.
