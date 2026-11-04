@@ -294,6 +294,15 @@ Before you start: `git pull origin claude/gracious-euler-tlrs89`, restart the se
    **Expect:** user rows (source `None`) and assistant rows with `source` `mock`, `llm` or `fallback`, a `model`, and `latency_ms` filled. There are no rows for the failed wrong-key attempt.
 5. (Extra) Click **＋ New session** and send a message, then run the check-4 command again. **Expect:** the newest rows have a higher `session_id`.
 
+**Ollama route (free, D-37): replaces the OpenRouter steps in checks 2 and 3**
+
+- Setup (once): check `Get-PSDrive D` (needs ~3–6 GB free). Download **OllamaSetup.exe** from https://ollama.com/download and **save it to `D:\cache\tmp`**. Install it onto D: from PowerShell with `& "D:\cache\tmp\OllamaSetup.exe" /DIR="D:\ollama\app"`. Open a **new** terminal and confirm `echo $env:OLLAMA_MODELS` prints `D:\ollama\models`. Then run `ollama pull qwen3:8b` (≈5 GB; use `qwen3:4b` ≈2.5 GB if you have 8 GB RAM) and `ollama list`.
+- Quick model test: `ollama run qwen3:8b "Say hello in one short sentence. /no_think"`. **Expect:** one sentence back (the first run can take a while as the model loads).
+- `.env`: `LLM_BASE_URL=http://localhost:11434/v1`, `LLM_API_KEY=ollama`, `LLM_MODEL=qwen3:8b`. Restart uvicorn.
+- **Check 2 (Ollama):** same three messages. **Expect:** no Mock mode tag, coherent 2–5 sentence replies with no `<think>` text, badge "AI reply", the third reply remembers the meeting, and Terminal A shows `source=llm model=qwen3:8b NNNNms` (several seconds is normal on a CPU).
+- **Check 3 (Ollama):** Ollama ignores keys, so test a failure with a wrong model name instead: `LLM_MODEL=qwen3:doesnotexist`, restart, send a message. **Expect:** the friendly error with Retry, and Terminal A shows `[chat] LLM error: NotFoundError: ... model ... not found`. Set `LLM_MODEL=qwen3:8b` again.
+- `Get-PSDrive C` before and after: C: free space should not drop by gigabytes.
+
 ---
 
 ### Phase 5: Safety layer
@@ -511,6 +520,8 @@ Things the spec leaves open or gets slightly wrong. In each case I picked the si
 | D-33 | For Qwen3 models, `llm.py` adds `/no_think` to the end of the system message, besides OpenRouter's `reasoning.enabled=false`. | Qwen3's documented switch, which works on any provider, including Ollama. It saves tokens and latency. |
 | D-34 | Until Phase 7 the reply badge shows the source ("Mock reply" / "AI reply" / "Fallback reply"). | There is no strategy yet; the badge still tells you which path answered. |
 | D-35 | The "Mock mode" tag sits in the header tools, so it is visible on every step. | Spec 11.7 asks for a small tag; the header is always visible, also on mobile. |
+| D-36 | New `.env` key **`LLM_TIMEOUT_SECONDS`** (default 120; it was a fixed 30 s in `llm.py`). | A local model on a laptop CPU (Ollama) can need more than 30 s, especially for the first reply while it loads. |
+| D-37 | **Zero-cost model route (your requirement, 4 Nov 2026): Ollama on the dev laptop.** App installed with `/DIR=D:\ollama\app`, models in `D:\ollama\models` (Phase 1 `OLLAMA_MODELS`). `.env`: `LLM_BASE_URL=http://localhost:11434/v1`, `LLM_API_KEY=ollama` (any non-empty text, because empty = mock mode), `LLM_MODEL=qwen3:8b` (the spec's model) or `qwen3:4b` on low-RAM laptops. OpenRouter stays documented as the paid option. | No API costs, and chat text never leaves the laptop (better for DPDP). Same OpenAI-compatible code path, so only `.env` changes. The fine-tuned comparison model (D-23) can run the same way. |
 
 ---
 
@@ -519,7 +530,7 @@ Things the spec leaves open or gets slightly wrong. In each case I picked the si
 | ID | Issue | Impact / plan |
 |---|---|---|
 | K-01 | ~~`Stillspace-2.html` was not in the repository.~~ | **Resolved:** you attached it, and it is now committed as `docs/mockup/Stillspace-2.html` (unchanged). |
-| K-02 | The `qwen/qwen3-8b` model ID and its availability on OpenRouter can change over time. | If Phase 4 check 2 fails with "model not found", only `LLM_MODEL` in `.env` needs to change. |
+| K-02 | **Happened (Phase 4 check 0, 4 Nov 2026):** `qwen/qwen3-8b` is no longer listed on OpenRouter. The nearest paid options are `qwen/qwen3-14b` ($0.12 / $0.24 per 1M tokens) and `qwen/qwen3.5-9b`. | You chose zero cost, so the local Ollama route (D-37) is used instead. The default in `.env.example` and `config.py` will be updated once check 2 passes with the chosen model. |
 | K-03 | The keyword safety check can't catch every indirect phrasing, and may flag figures of speech. | It is backed by the classifier's `risk` check (Phase 7). False positives and negatives found in Phase 5 will be listed here. |
 | K-04 | The comparison model (mental-health fine-tuned) has not been chosen yet (D-23). | Needed before Phase 9. Phases 2–8 don't depend on it. |
 | K-05 | ~~Chat answers came from placeholders in `app.js`.~~ | **Resolved in Phase 4:** replies come from `/api/chat` (mock or LLM) and are stored. |

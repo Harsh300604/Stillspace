@@ -58,6 +58,9 @@ HISTORY_TURNS = _get_int("HISTORY_TURNS", 6)
 APP_TIMEZONE = _get_text("APP_TIMEZONE", "Asia/Kolkata")
 DEMO_MODE = _get_bool("DEMO_MODE", True)
 FOLLOWUP_CONTACT = _get_text("FOLLOWUP_CONTACT", "")
+# Seconds to wait for one model reply. A local model on a laptop CPU (Ollama)
+# can need well over 30 s, especially the first reply while the model loads.
+LLM_TIMEOUT_SECONDS = _get_int("LLM_TIMEOUT_SECONDS", 120)
 
 # A relative DB_PATH is resolved from the project root so the database always
 # lands inside the project folder (and therefore on D: for the developer).

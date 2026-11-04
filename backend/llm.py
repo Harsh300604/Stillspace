@@ -28,8 +28,9 @@ def strip_thinking(text: str) -> str:
 
 
 def _make_client() -> OpenAI:
-    """Create the API client. Short timeout + one retry: a chat user should not wait minutes."""
-    return OpenAI(base_url=config.LLM_BASE_URL, api_key=config.LLM_API_KEY, timeout=30, max_retries=1)
+    """Create the API client: timeout from .env and one retry, so a dropped connection is retried once."""
+    return OpenAI(base_url=config.LLM_BASE_URL, api_key=config.LLM_API_KEY,
+                  timeout=config.LLM_TIMEOUT_SECONDS, max_retries=1)
 
 
 def _thinking_off(messages: list[dict], model: str) -> tuple[list[dict], dict]:
