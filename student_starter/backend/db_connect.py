@@ -64,7 +64,20 @@ def create_tables() -> None:
     conn = get_connection()
     try:
         if USING_POSTGRES:
-            conn.execute(schema)  # several statements at once are fine when there are no parameters
+            # Setting up tables needs a short exclusive lock. If another connection keeps a
+            # transaction open (e.g. an old copy of the app), wait at most 15 s and then say
+            # so, instead of hanging silently with the browser loading forever.
+            conn.execute("SET lock_timeout = '15s'")
+            try:
+                conn.execute(schema)  # several statements at once are fine when there are no parameters
+            except Exception as error:
+                if "lock" not in str(error).lower():
+                    raise
+                raise SystemExit(
+                    "[startup] STOP: the database is busy: another connection is holding the tables.\n"
+                    "  Usually an older copy of Stillspace is still running. Close every other terminal running\n"
+                    "  uvicorn (or run: Get-Process python | Stop-Process -Force), wait a minute and start again.\n"
+                    "  Still stuck? See docs/TROUBLESHOOTING.md, 'Database'.") from error
         else:
             conn.executescript(schema)
             existing = {row["name"] for row in conn.execute("PRAGMA table_info(participants)")}
