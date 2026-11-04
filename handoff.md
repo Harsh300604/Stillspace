@@ -34,7 +34,7 @@ Around the chat there are optional **check-ins**: a one-time setup, a daily mood
 | 6 | `mentoring.md` | If you teach a student: the 16 one-hour sessions | 1 h |
 | 7 | `docs/DEPLOYMENT.md` | If you deploy: Supabase, Railway/Render, the pre-launch checklist | 30 min |
 | — | `decisions.md` | The reasoning behind design choices (readable narrative) | as needed |
-| — | `implementation.md` | Phase-by-phase build record, numbered decisions (D-01…D-60) and known issues (K-01…K-11) | as needed |
+| — | `implementation.md` | Phase-by-phase build record, numbered decisions (D-01…D-60) and known issues (K-01…K-12) | as needed |
 | — | `memory.md` | Build journal: what went wrong and how it was fixed; lessons for the mentor | as needed |
 | — | `docs/TROUBLESHOOTING.md` | Look up any error message | as needed |
 | — | `Stillspace_Build_Specification.docx` | The original specification the build follows | as needed |
@@ -171,6 +171,7 @@ Running the study: `python scripts/safety_report.py --days 1` (flags: code, time
 | Safety test set | 30/30 correct (20 crisis caught, 10 figures of speech passed) |
 | Classifier, `qwen3:4b-instruct` on Ollama | **27/30 = 90%**, all valid JSON, no single-strategy bias (10/8/5/7). Misses T18, T21, T23 (expected Reassurance), left un-tuned on purpose for teaching session 8 |
 | Automated end-to-end suites (dev chat) | Pass on SQLite and on Postgres (journey, check-ins, chat, explainability, summary, production safeguards) |
+| User isolation test (D-60) | 30/30 on SQLite, Postgres and the starter: one participant cannot read, change or chat into another's data |
 | Supabase | Connected (Mumbai), RLS on all 4 tables, codes and safety report working |
 | Student starter | Runs in mock mode with safe placeholders; with the finished functions swapped in, every "done when" check passes |
 | Not yet run | The **blind A/B rating study** (`eval_responses.py`). It is designed and the tools work; the ratings are the student's work in sessions 13–14 |
@@ -185,6 +186,7 @@ Running the study: `python scripts/safety_report.py --days 1` (flags: code, time
 | K-07 | A page refresh starts a new chat session (messages stay in the database) | Known limitation |
 | K-09 | Rate limits are kept in memory (reset on restart; per process) | Fine for one small instance; use a shared store if you scale |
 | K-11 | Beginner setup verified on Linux, not on a Windows laptop | Follow `docs/SETUP.md` once on Windows, or with the student in session 2 |
+| K-12 | The code is still the only secret needed to sign in (no password, by spec design) | Hand codes out privately; a PIN could be added if the ethics board asks |
 
 Full list with history: `implementation.md` → Known issues.
 

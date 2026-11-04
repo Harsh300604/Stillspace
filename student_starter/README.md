@@ -17,7 +17,7 @@ uvicorn backend.main:app --reload --port 8001
 ```
 Open **http://localhost:8001** (port 8001, so it can run next to the finished app on 8000). Sign in with any code, e.g. `S001`.
 
-✅ What works straight away: consent, check-ins, PHQ-9 scoring, mood, the chat in mock mode, the **safety reply** for crisis messages, reflection and summary.
+✅ What works straight away: consent and sign-in (an expiring sign-in token keeps each participant to their own data, `backend/auth.py`), check-ins, PHQ-9 scoring, mood, the chat in mock mode, the **safety reply** for crisis messages, reflection and summary.
 ⏳ What's a placeholder until you write it: real AI replies, the classifier's choice, your requested strategy, the strategy-aware prompt and conversation memory. The terminal prints `[TODO Session N] ...` whenever a placeholder is used.
 
 ## Your TODOs

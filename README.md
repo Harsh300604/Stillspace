@@ -86,6 +86,6 @@ stillspace/
 
 ## Privacy in one paragraph
 
-Data is stored in a local SQLite file (or your own Supabase project when deployed). Nothing is sent anywhere **except the chat text to the AI provider you configure** (none in mock mode; your own computer with Ollama), and that provider's data policy applies. PHQ-9 answers and dates of birth are never sent to the AI. The database, exports and `.env` are git-ignored. PHQ-9 and date of birth are health and personal data under India's DPDP Act 2023.
+Data is stored in a local SQLite file (or your own Supabase project when deployed). Nothing is sent anywhere **except the chat text to the AI provider you configure** (none in mock mode; your own computer with Ollama), and that provider's data policy applies. PHQ-9 answers and dates of birth are never sent to the AI. The database, exports and `.env` are git-ignored. PHQ-9 and date of birth are health and personal data under India's DPDP Act 2023. **Each participant only ever reaches their own data:** the code is typed once, then every request carries an expiring sign-in token from which the server identifies the person (`backend/auth.py`, D-60).
 
 PHQ-9 developed by Drs. Robert L. Spitzer, Janet B. W. Williams, Kurt Kroenke and colleagues.

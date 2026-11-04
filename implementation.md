@@ -57,6 +57,8 @@ Around the chat there are check-ins (setup, daily mood, PHQ-9 every 14 days, pos
 
 Status key: ⬜ not started · 🔨 built, waiting for your checks · ✅ checks passed
 
+**After Phase 10 (4 Nov 2026):** user isolation with server-issued sign-in tokens (D-60). New `backend/auth.py` and `auth_tokens` table; endpoints `/api/me/status`, `PATCH /api/me`, `/api/logout`; the code is sent only at sign-in. Applied to `student_starter/` and all docs. ✅ Tested (30-check isolation test on SQLite, Postgres and the starter).
+
 **Build order (D-46):** 8 → 9 → **11** → 10. Phase 11 (deployment) was added after the spec. It is built before Phase 10 so that the handover docs, `student_starter/` and `mentoring.md` (still written last, as the spec requires) describe the final code, including deployment.
 
 ---
@@ -210,7 +212,7 @@ Before you start: `git pull origin claude/gracious-euler-tlrs89`, make sure `.en
 **Files:**
 - `backend/db.py`: `get_connection()`, `create_tables()` (all 4 tables from spec 9, including `sessions`/`messages` for Phase 4), participant and check-in helpers
 - `backend/checkins.py`: `score_phq9()`, `phq_band()`, `clean_phq_answers()`, `local_today()`, `build_status()`
-- `backend/routes/participants.py`: `POST /api/participants`, `GET /api/participants/{code}/status`, `PATCH /api/participants/{code}`, `POST /api/demo/advance` (404 unless `DEMO_MODE=true`)
+- `backend/routes/participants.py` *(endpoints later changed to `/api/me/status` and `PATCH /api/me` with sign-in tokens, D-60)*: `POST /api/participants`, `GET /api/participants/{code}/status`, `PATCH /api/participants/{code}`, `POST /api/demo/advance` (404 unless `DEMO_MODE=true`)
 - `backend/routes/checkins.py`: `POST /api/checkins` (setup / daily upsert / fortnightly / post_session)
 - `backend/main.py`: creates tables on start-up, includes the new routers
 - `frontend/app.js`: sign-in and routing, saving check-ins, mood and preference saving, demo buttons, "Switch participant", "New session" keeps the participant
@@ -218,7 +220,7 @@ Before you start: `git pull origin claude/gracious-euler-tlrs89`, make sure `.en
 
 **What was done / deviations:**
 - The consent page's primary button is now **"Continue →"** and routes by status (setup → daily → two-week → chat). **"Skip to chat →"** signs in and goes straight to chat, because check-ins are optional in the mockup (D-26).
-- After a refresh, the code kept in `sessionStorage` signs you back in and routes by status. If nothing is due, you land in chat; the Check-ins tab shows the saved answers (D-27).
+- After a refresh, the code kept in `sessionStorage` *(now the sign-in token, D-60)* signs you back in and routes by status. If nothing is due, you land in chat; the Check-ins tab shows the saved answers (D-27).
 - Check-in save buttons: the in-card buttons and the bottom button both save, then move to the next due tab (or to chat). Bottom-button labels are now "Save setup →", "Finish daily check-in →" and "Finish two-week check-in →" (the mockup's "Continue to setup/chat" labels no longer fit the new order).
 - After a PHQ-9 save, a short toast shows the **server's** result ("Saved. PHQ-9 total 9 (mild)." or "…incomplete, so no total is stored.").
 - The risk indicator shows "Follow-up needed" when the live PHQ form has item 9 > 0 **or** the latest saved PHQ-9 has `item9_flag=1` (spec 11.5). Safety replies are added in Phase 5.
@@ -624,7 +626,7 @@ Before you start: `git pull origin claude/gracious-euler-tlrs89`; Terminal C (`o
 | Database | `backend/db_connect.py` (new): SQLite when `DATABASE_URL` is empty, **Postgres (Supabase)** when set; `run()` swaps `?` → `%s`, `insert()` returns the new id (`lastrowid` / `RETURNING id`); `describe()` for the start-up line (never prints the password). Tables in `backend/data/schema_sqlite.sql` / `schema_postgres.sql` (Postgres: **RLS enabled on all 4 tables, no policies**). Older SQLite files get the new columns automatically. `db.py` keeps only query helpers (173 lines). New package `psycopg[binary]` (D-47). |
 | Sign-in | `APP_ENV=production` → **only codes made by `scripts/create_codes.py` (marked `issued=1`, D-56)** (e.g. `SS-RVAN-E3PK`, 8 random characters, no look-alike letters); unknown or malformed codes get the same message; codes may now contain hyphens. **10 sign-ins per minute per IP** (real IP from `X-Forwarded-For` behind Railway/Render). |
 | Age and consent | Online consent page shows `backend/data/consent.txt` (with `{followup_contact}` filled in) and the age question: **18 or older**, or **under 18** + guardian tick (`AGE_POLICY=18plus_or_guardian`; `18plus_only` hides the second option). Stored as `age_group`, `guardian_consent`, `consent_at`. |
-| Session ownership (D-55) | `POST /api/chat` (body `code`), `POST /api/sessions/{id}/end` (body `{code}`) and `GET /api/sessions/{id}/summary?code=…` check that the session belongs to that code; otherwise 404. Session ids are simple numbers, so this stops guessing. |
+| Session ownership (D-55; since D-60 the participant comes from the sign-in token, not a `code` in the request) | `POST /api/chat` (body `code`), `POST /api/sessions/{id}/end` (body `{code}`) and `GET /api/sessions/{id}/summary?code=…` check that the session belongs to that code; otherwise 404. Session ids are simple numbers, so this stops guessing. |
 | Limits | `backend/ratelimit.py`: **40 messages per participant per hour, 700 per day for the whole app** (rolling 24 h); the friendly limit message includes the helplines. **Applied after the keyword safety check: a crisis message is never blocked.** |
 | Locked down | `DEMO_MODE` forced off in production; `/docs`, `/redoc`, `/openapi.json` off; start-up **refuses** to run without `FOLLOWUP_CONTACT` (or with an invalid `AGE_POLICY`) and **warns** about mock mode or SQLite. |
 | Researcher scripts | `create_codes.py --count N`, `safety_report.py --days N / --since DATE` (code, time, type, rule id; no message text), `delete_participant.py CODE` (asks first; `--yes` to skip), `export_data.py` (now SQLite or Postgres). |

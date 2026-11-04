@@ -1142,7 +1142,7 @@ All paths are relative to the **starter folder** (student) or the **project fold
 5. **Close-out:** delete the student's OpenRouter key; the student deletes `data\stillspace.db` and `exports\` if they contain anything they don't need. Remind them: never put real conversations or a key in a public repository.
 
 **Optional extensions** (if there's time, or for a motivated student afterwards)
-- **Going online, in theory:** read `docs/DEPLOYMENT.md` together: why online mode needs researcher-issued codes (`scripts/create_codes.py`), an age question with guardian consent, message limits, ownership checks and a named follow-up adult. A real bug from the build: early on, session ids could be guessed, so anyone could read another person's chat. Fixed by checking that the session belongs to the code (D-55).
+- **Going online, in theory:** read `docs/DEPLOYMENT.md` together: why online mode needs researcher-issued codes (`scripts/create_codes.py`), an age question with guardian consent, message limits, sign-in tokens (each person only reaches their own data, `backend/auth.py`) and a named follow-up adult. A real bug from the build: early on, session ids could be guessed, so anyone could read another person's chat. Fixed by checking that the session belongs to the code (D-55).
 - Try the 8-strategy ESConv set and re-run the classifier evaluation.
 - Compare a mental-health fine-tuned model in `eval_responses.py` (`--models`).
 

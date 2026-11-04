@@ -10,6 +10,8 @@ What runs where:
 | AI model | **OpenRouter** (paid credits) | An API key **with a spending limit** |
 | The app (backend + web page) | **Railway** or **Render** | The GitHub repository and the environment variables below |
 
+**User isolation is built in (D-60):** participants type their code once; after that every request carries an expiring sign-in token, and the server only ever returns the signed-in person's own data. Codes are kept out of web addresses and logs. Hand out codes privately: a code is still what lets someone sign in.
+
 Your laptop setup does not change: with `DATABASE_URL` empty and `APP_ENV=local`, Stillspace still runs on SQLite + Ollama/mock mode, exactly as in the student course.
 
 ---
@@ -108,7 +110,8 @@ If `FOLLOWUP_CONTACT` is missing, the app **refuses to start** and the log says 
 - Open the link on your phone: the consent page shows the study text and the age question.
 - Sign in with one issued code, chat, send one synthetic crisis test message (e.g. from `eval/safety_prompts.csv`), and check the helplines appear.
 - Run `python scripts/safety_report.py --days 1` on your laptop (with the same `DATABASE_URL`): the test flag is listed.
-- Then delete the test participant: `python scripts/delete_participant.py <code>`.
+- Isolation check: in a second browser (or a private window), sign in with a **different** issued code and confirm none of the first person's check-ins or chat appear.
+- Then delete the test participants: `python scripts/delete_participant.py <code>`.
 
 ---
 

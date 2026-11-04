@@ -67,9 +67,9 @@ message ─▶ 1 safety.find_crisis_match ──match──▶ fixed crisis repl
 | `checkins.py` | PHQ-9 scoring and bands, what's due today, check-in context for the prompt | 11 |
 | `db.py` | Small SQL helpers (participants, check-ins, sessions, messages, safety report) | 11 |
 | `db_connect.py` | Opens SQLite or Postgres; creates tables; the two small SQL differences | 11 |
-| `routes/participants.py` | Sign-in, status, preferences, demo date; online: issued codes + age consent | 11 |
+| `routes/participants.py` | Sign-in (returns the sign-in token), status, preferences, sign-out, demo date; online: issued codes + age consent | 11 |
 | `routes/checkins.py` | `POST /api/checkins`: setup, daily (merged per day), PHQ-9, reflection | 11 |
-| `routes/sessions.py` | Start, end and summary of a chat session (ownership checked) | 11 |
+| `routes/sessions.py` | Start, end and summary of a chat session (only the signed-in participant's own sessions) | 11 |
 | `ratelimit.py` | Message and sign-in limits kept in memory | (online) |
 | `auth.py` | Sign-in tokens: issue, check (`require_participant`), revoke | 11 |
 

@@ -80,6 +80,7 @@ Online (`APP_ENV=production`) adds: only researcher-issued codes can sign in, an
 
 - Data stays in your own database (local SQLite file or your own Supabase project). **Only the chat text** goes to the AI provider you configure (none in mock mode; your own computer with Ollama), and that provider's policy applies.
 - PHQ-9 answers and dates of birth are **never** sent to the AI.
+- **User isolation:** after sign-in, every request carries an expiring sign-in token and the server takes the participant from it, so nobody can reach another person's check-ins, PHQ-9 results or chats (D-60). Codes never appear in web addresses or logs. A crisis message still gets the safety reply if a sign-in has expired.
 - The database, exports and `.env` are git-ignored. Never commit real data. Delete a participant on request with `python scripts/delete_participant.py <code>`.
 
 PHQ-9 developed by Drs. Robert L. Spitzer, Janet B. W. Williams, Kurt Kroenke and colleagues.
