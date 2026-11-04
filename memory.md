@@ -135,6 +135,7 @@ Mock mode: set `LLM_API_KEY=` (empty) and restart.
 - **Built:** `scripts/eval_responses.py`: A (plain prompt) vs B (full pipeline) per message and model, with no history or check-ins in either. Writes the full `responses_*.csv` plus a **shuffled blind rating sheet**; `--summarise` merges ratings back; the `ollama:` prefix for local models.
 - **Decision:** the developer left the design open ("what holds up best"), so it's built for a fair, blind comparison (D-53). A second model can be added any time with `--models`.
 - **Verified by the dev chat:** 10/20-row runs, A/B metadata, blind sheet, model switching, mock mode, crisis rows, the summarise round trip with an Excel-encoded file.
+- **Checks 1–4:** all passed in the dev chat's run on a fresh copy, at the developer's request (model server on `localhost:11434` standing in for Ollama).
 
 ### Plan change after Phase 7 (4 Nov 2026)
 - The developer wants to deploy the app later so the student can share it. **Decision:** Supabase Postgres + online safety, as a new **Phase 11**, built after Phase 9 and before Phase 10 (D-46 to D-50).

@@ -510,7 +510,7 @@ Before you start: `git pull origin claude/gracious-euler-tlrs89`, restart uvicor
 
 **Goal:** a script that produces a human-rating sheet comparing condition A (no strategy, plain prompt) with condition B (full pipeline), optionally for several models.
 
-**Status:** 🔨 Built – waiting for your checks.
+**Status:** 🔨 Built. **Checks 1–4 all passed in the dev chat's run on a fresh copy (4 Nov 2026, at your request)**, with a model server on Ollama's own address (`localhost:11434`), so check 2's exact `ollama:qwen3:8b` command ran unchanged: check 1 → `= 10 rows` + both files; check 2 → 20 rows, model column `qwen3:4b-instruct-2507-q4_K_M` ×10 and `ollama:qwen3:8b` ×10 (the prefix is kept in the column, so you can see which provider was used); check 3 → A rows empty / B rows filled for strategy, emotion, intensity and stage, rating columns empty, Excel marker present, blind sheet shuffled (`BBAABABAAB`) without condition/model/strategy; check 4 → 6 rows rated and saved in Excel's Windows encoding, `--summarise` printed the per-condition table. Waiting for your OK to mark it done.
 
 **Files:**
 - `scripts/eval_responses.py`:
