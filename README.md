@@ -46,6 +46,7 @@ stillspace/
 ├── implementation.md    phased build plan, checks, decisions log, known issues
 ├── decisions.md         why things were built this way (for the mentor)
 ├── memory.md            build journal: problems hit and how they were fixed
+├── handoff.md           start here if you are taking over the project
 ├── mentoring.md         16-session teaching plan (one hour each)
 ├── requirements.txt     Python packages
 ├── .env.example         all settings, copy to .env
@@ -75,6 +76,7 @@ stillspace/
 | Read this | When |
 |---|---|
 | `docs/SETUP.md` | Installing everything on a new computer (beginner friendly, Windows first) |
+| **`handoff.md`** | **Taking over the project (mentor): start here** |
 | `flow.md` | Understanding who does what and what happens behind each click |
 | `docs/ARCHITECTURE.md` | Understanding the code, the pipeline and the database |
 | `docs/SAFETY.md` | Before any testing with people; what to do if a real disclosure happens |
