@@ -53,7 +53,7 @@ Around the chat there are check-ins (setup, daily mood, PHQ-9 every 14 days, pos
 | 8 | Reflection, summary, export | `backend/routes/sessions.py` (new), `backend/routes/chat.py`, `backend/db.py`, `backend/main.py`, `frontend/app.js`, `scripts/export_data.py` | ✅ Done – checks passed |
 | 9 | Evaluation kit | `scripts/eval_responses.py` | ✅ Done – checks passed |
 | 10 | Handover docs, student starter, mentoring.md | `README.md`, `docs/SETUP.md`, `docs/ARCHITECTURE.md`, `docs/SAFETY.md`, `docs/TROUBLESHOOTING.md`, `student_starter/`, `mentoring.md` | ⬜ Not started |
-| 11 | Deployment readiness (Supabase + online safety) – **built after Phase 9, before Phase 10** | `backend/db_connect.py` (new), `backend/db.py`, `backend/data/schema_sqlite.sql`, `backend/data/schema_postgres.sql`, `backend/data/consent.txt`, `backend/config.py`, `backend/ratelimit.py`, `backend/main.py`, `backend/checkins.py`, `backend/routes/*`, `frontend/app.js`, `scripts/create_codes.py`, `scripts/safety_report.py`, `scripts/delete_participant.py`, `scripts/export_data.py`, `requirements.txt`, `.env.example`, `docs/DEPLOYMENT.md` | 🔨 Built – waiting for your checks |
+| 11 | Deployment readiness (Supabase + online safety) – **built after Phase 9, before Phase 10** | `backend/db_connect.py` (new), `backend/db.py`, `backend/data/schema_sqlite.sql`, `backend/data/schema_postgres.sql`, `backend/data/consent.txt`, `backend/config.py`, `backend/ratelimit.py`, `backend/main.py`, `backend/checkins.py`, `backend/routes/*`, `frontend/app.js`, `scripts/create_codes.py`, `scripts/safety_report.py`, `scripts/delete_participant.py`, `scripts/export_data.py`, `requirements.txt`, `.env.example`, `docs/DEPLOYMENT.md` | ✅ Done – checks passed |
 
 Status key: ⬜ not started · 🔨 built, waiting for your checks · ✅ checks passed
 
@@ -583,7 +583,7 @@ Before you start: `git pull origin claude/gracious-euler-tlrs89`; Terminal C (`o
 
 **Goal:** the same app runs (a) locally on SQLite exactly as before (student course, offline, mock mode), or (b) online for a small, approved group, with Supabase Postgres, researcher-issued codes, rate limits, a safety report, consent and an age check, and no demo or debug endpoints.
 
-**Status:** 🔨 Built. **Your run (4 Nov 2026):** check 2 ✅ on your real Supabase project: `db.describe()` → `postgres (aws-0-ap-northeast-1.pooler.supabase.com)`, all 4 tables `rowsecurity: True`; `create_codes.py --count 3` wrote 3 issued codes. Region is **Tokyo** (see K-10). Checks 3–7 still to report.
+**Status:** ✅ Done (4 Nov 2026). **Your run (4 Nov 2026):** check 2 ✅ on your real Supabase project: `db.describe()` → `postgres (aws-0-ap-northeast-1.pooler.supabase.com)`, all 4 tables `rowsecurity: True`; `create_codes.py --count 3` wrote 3 issued codes. Region is **Tokyo** (see K-10). You confirmed checks 3–7 done. Check 8 (a real Railway/Render deployment) and check 9 (the pre-launch checklist) happen when you go live.
 
 **What was built (D-46 to D-55):**
 

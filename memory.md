@@ -11,8 +11,8 @@
 
 | Item | Value |
 |---|---|
-| Last completed phase | **Phase 9** – Evaluation kit |
-| Current phase | **Phase 11 – Deployment readiness (Supabase + online safety)** (built, waiting for the developer's checks) |
+| Last completed phase | **Phase 11** – Deployment readiness (Supabase + online safety) |
+| Current phase | – (Phase 10 not started yet) |
 | Next phase | Phase 10 – handover docs, student starter, mentoring.md (last) |
 | Build order from here | 8 → 9 → **11 (deployment: Supabase + online safety)** → 10 (docs, student starter, mentoring.md last) |
 | Branch | `claude/gracious-euler-tlrs89` (repo `harsh300604/stillspace`) |
@@ -138,7 +138,7 @@ Mock mode: set `LLM_API_KEY=` (empty) and restart.
 - **Verified by the dev chat:** 10/20-row runs, A/B metadata, blind sheet, model switching, mock mode, crisis rows, the summarise round trip with an Excel-encoded file.
 - **Checks 1–4:** all passed in the dev chat's run on a fresh copy, at the developer's request (model server on `localhost:11434` standing in for Ollama).
 
-### Phase 11 – Deployment readiness: Supabase + online safety (4 Nov 2026) 🔨 built, waiting for checks
+### Phase 11 – Deployment readiness: Supabase + online safety (4 Nov 2026) ✅
 - **Built:** `db_connect.py` (SQLite or Postgres), schema files (Postgres with RLS), researcher-issued codes, age and guardian consent, session ownership checks, rate limits (40 per hour, 700 per day; never blocking safety), production lock-down, `create_codes.py`, `safety_report.py`, `delete_participant.py`, Postgres export, `docs/DEPLOYMENT.md` (Railway and Render, pre-launch checklist).
 - **Found while building:** session ids are guessable numbers → every session/chat request now carries the code and the server checks ownership (D-55). Railway/Render put a proxy in front of the app → the sign-in limit reads `X-Forwarded-For`, otherwise all visitors would share one limit.
 - **Verified by the dev chat:** 4 rounds: SQLite regression, the same suites on a real Postgres 16 server, all production safeguards, upgrading an old SQLite file and the online consent page in a browser. Not testable from the dev chat: the developer's own Supabase project and a real Railway/Render deploy.
