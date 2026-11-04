@@ -84,6 +84,11 @@ stillspace/
 | `docs/DEPLOYMENT.md` | Putting it online (Supabase + Railway/Render) and the pre-launch checklist |
 | `mentoring.md` | Teaching a student to build it in 16 one-hour sessions |
 
+## Who can use it
+
+- **On your laptop** (`APP_ENV=local`): any code works. Use this for development, testing and teaching.
+- **Online** (`APP_ENV=production`): **invite-only**. The research team creates codes with `python scripts/create_codes.py --count 20` and gives one to each consented participant. There is no public sign-up, on purpose: it is a supervised study, and safety follow-up, guardian consent and withdrawal all depend on knowing who has which code. Details, and what a public version would need: `docs/DEPLOYMENT.md` §2.
+
 ## Privacy in one paragraph
 
 Data is stored in a local SQLite file (or your own Supabase project when deployed). Nothing is sent anywhere **except the chat text to the AI provider you configure** (none in mock mode; your own computer with Ollama), and that provider's data policy applies. PHQ-9 answers and dates of birth are never sent to the AI. The database, exports and `.env` are git-ignored. PHQ-9 and date of birth are health and personal data under India's DPDP Act 2023. **Each participant only ever reaches their own data:** the code is typed once, then every request carries an expiring sign-in token from which the server identifies the person (`backend/auth.py`, D-60).

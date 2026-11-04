@@ -147,6 +147,11 @@ Mock mode: set `LLM_API_KEY=` (empty) and restart.
 - **Developer's run:** connected to their real Supabase project (`aws-0-ap-northeast-1` = **Tokyo**), all 4 tables with RLS on, 3 issued codes created. Advice: keep Tokyo as the test project; create the study project in Mumbai (`ap-south-1`) (K-10). **Later the same day:** the developer switched `DATABASE_URL` to a new Mumbai project; start-up created the tables, `create_codes.py --count 3` and `safety_report.py` ran against `aws-0-ap-south-1`. K-10 resolved. Those 3 codes were also pasted in chat, so they count as test codes.
 - **Heads-up:** the developer's `.env` already has `DATABASE_URL`, so after `git pull` + `pip install -r requirements.txt` the local app writes to Supabase.
 
+### After Phase 10: invite-only access explained (4 Nov 2026)
+- The developer's laptop refused `T001` ("code not valid") because `.env` still had `APP_ENV=production` from Phase 11 testing → set `APP_ENV=local` on the laptop; production only on the server.
+- The developer asked why everyone can't use the app. Answer recorded as D-61 and added to the docs: invite-only is deliberate for a supervised study (consent, guardian consent, follow-up, withdrawal, ethics, cost). Public access is documented as a future mode with its requirements, not built.
+- Also fixed: start-up hung silently when another connection held a Postgres lock (browser loading forever) → `lock_timeout` 15 s and a clear STOP message (PR #3).
+
 ### After Phase 10: user isolation with sign-in tokens (4 Nov 2026) ✅ done
 - **Developer's question:** "do we have user isolation?" Audit: data was already scoped per code and sessions were ownership-checked, but the code was the credential on every request (in URLs and logs), and only sign-in was rate-limited.
 - **Developer chose option C:** server-issued sign-in tokens (D-60). New `backend/auth.py`, table `auth_tokens` (hashes only), `/api/me/status`, `PATCH /api/me`, `/api/logout`, `code` removed from all other requests, logs without codes, `SIGN_IN_HOURS=12`. A crisis message with an expired token still gets the safety reply.

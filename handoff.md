@@ -34,7 +34,7 @@ Around the chat there are optional **check-ins**: a one-time setup, a daily mood
 | 6 | `mentoring.md` | If you teach a student: the 16 one-hour sessions | 1 h |
 | 7 | `docs/DEPLOYMENT.md` | If you deploy: Supabase, Railway/Render, the pre-launch checklist | 30 min |
 | — | `decisions.md` | The reasoning behind design choices (readable narrative) | as needed |
-| — | `implementation.md` | Phase-by-phase build record, numbered decisions (D-01…D-60) and known issues (K-01…K-12) | as needed |
+| — | `implementation.md` | Phase-by-phase build record, numbered decisions (D-01…D-61) and known issues (K-01…K-12) | as needed |
 | — | `memory.md` | Build journal: what went wrong and how it was fixed; lessons for the mentor | as needed |
 | — | `docs/TROUBLESHOOTING.md` | Look up any error message | as needed |
 | — | `Stillspace_Build_Specification.docx` | The original specification the build follows | as needed |
@@ -128,6 +128,13 @@ Follow `docs/DEPLOYMENT.md`. In short:
 5. **Complete the pre-launch checklist** (`docs/DEPLOYMENT.md` §5) **before sharing the link**.
 
 **What production mode switches on:** only issued codes can sign in; age question (18+, or under-18 with guardian confirmation); the study's consent text; 40 messages per hour per participant and 700 per day for the app (the safety reply is never blocked); demo tools and `/docs` turned off.
+
+### Who can use it online: invite-only codes (D-61)
+There is **no sign-up button online**: only codes the research team creates with `scripts/create_codes.py` can sign in. This is deliberate. Online, every user is a research participant, so the study must know that consent (and a signed guardian form for under-18s) came first, that the follow-up adult can act on a safety flag, and that a withdrawal can be honoured. Open sign-up would remove all three, and would also expose the OpenRouter credit to abuse.
+- **Create codes:** with the study's `DATABASE_URL` in your laptop's `.env`, run `python scripts/create_codes.py --count 20`. The list is saved to `exports\issued_codes_<time>.csv`; keep a private record of who got which code.
+- **Hand out:** one code per person, privately, with the link.
+- **On your laptop** keep `APP_ENV=local` (any code works, demo buttons shown). Set `APP_ENV=production` only on the server. "This participant code is not valid" on your laptop means `.env` still says `production`.
+- **Want public access later?** It is a design and ethics change (18+ only, verified sign-up, privacy policy, monitoring, new approval). See `docs/DEPLOYMENT.md` §2. Batches of codes for a class or group work today.
 
 ### User isolation (in every mode)
 The participant code is typed **once**. Sign-in returns a random **sign-in token**, and the browser sends it with every request (`Authorization: Bearer …`). `backend/auth.py` finds the participant **from the token**, so a request can only ever reach the signed-in person's own data. Session ids are checked against that participant too.
