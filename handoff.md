@@ -41,16 +41,13 @@ Around the chat there are optional **check-ins**: a one-time setup, a daily mood
 
 ## 3. Get the code
 
-The finished work is on the branch **`claude/gracious-euler-tlrs89`** (it may have been merged into `main` before you received this; check which branch has `handoff.md`).
+Everything is on **`main`**.
 
 ```powershell
 git clone https://github.com/harsh300604/stillspace.git
 ```
 ```powershell
 cd stillspace
-```
-```powershell
-git checkout claude/gracious-euler-tlrs89
 ```
 
 **Secrets are not in the repo.** `.env`, the database file and exports are git-ignored. You create your **own** keys and database (sections 4 and 7). Nothing from the developer's accounts (OpenRouter key, Supabase project, participant codes) carries over, and none should be reused.
