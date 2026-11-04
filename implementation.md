@@ -522,6 +522,7 @@ Things the spec leaves open or gets slightly wrong. In each case I picked the si
 | D-35 | The "Mock mode" tag sits in the header tools, so it is visible on every step. | Spec 11.7 asks for a small tag; the header is always visible, also on mobile. |
 | D-36 | New `.env` key **`LLM_TIMEOUT_SECONDS`** (default 120; it was a fixed 30 s in `llm.py`). | A local model on a laptop CPU (Ollama) can need more than 30 s, especially for the first reply while it loads. |
 | D-37 | **Zero-cost model route (your requirement, 4 Nov 2026): Ollama on the dev laptop.** App installed with `/DIR=D:\ollama\app`, models in `D:\ollama\models` (Phase 1 `OLLAMA_MODELS`). `.env`: `LLM_BASE_URL=http://localhost:11434/v1`, `LLM_API_KEY=ollama` (any non-empty text, because empty = mock mode), `LLM_MODEL=qwen3:8b` (the spec's model) or `qwen3:4b` on low-RAM laptops. OpenRouter stays documented as the paid option. | No API costs, and chat text never leaves the laptop (better for DPDP). Same OpenAI-compatible code path, so only `.env` changes. The fine-tuned comparison model (D-23) can run the same way. |
+| D-38 | **Two model setups, same code.** Dev/testing (you): Ollama `qwen3:8b`, free (D-37). **Handoff (student and mentor): OpenRouter with credits**, default `LLM_MODEL=qwen/qwen3-14b` in `.env.example` and `config.py`. `docs/SETUP.md` (Phase 10) will default to OpenRouter with a spending limit and mention Ollama as a free alternative. For the Phase 9 evaluation the student uses one model consistently and names it in the report. | Spec 2 and 15: hosted API, no GPU needed on the student's laptop. `qwen/qwen3-8b` is gone from OpenRouter; `qwen3-14b` is the same family, cheap (about $0.12 / $0.24 per 1M tokens), and its thinking can be switched off. |
 
 ---
 
@@ -530,7 +531,7 @@ Things the spec leaves open or gets slightly wrong. In each case I picked the si
 | ID | Issue | Impact / plan |
 |---|---|---|
 | K-01 | ~~`Stillspace-2.html` was not in the repository.~~ | **Resolved:** you attached it, and it is now committed as `docs/mockup/Stillspace-2.html` (unchanged). |
-| K-02 | **Happened (Phase 4 check 0, 4 Nov 2026):** `qwen/qwen3-8b` is no longer listed on OpenRouter. The nearest paid options are `qwen/qwen3-14b` ($0.12 / $0.24 per 1M tokens) and `qwen/qwen3.5-9b`. | You chose zero cost, so the local Ollama route (D-37) is used instead. The default in `.env.example` and `config.py` will be updated once check 2 passes with the chosen model. |
+| K-02 | **Happened (Phase 4 check 0, 4 Nov 2026):** `qwen/qwen3-8b` is no longer listed on OpenRouter. The nearest paid options are `qwen/qwen3-14b` ($0.12 / $0.24 per 1M tokens) and `qwen/qwen3.5-9b`. | The handoff default is now `qwen/qwen3-14b` (D-38). The dev laptop uses local Ollama `qwen3:8b` (D-37). Re-run Phase 4 check 0 just before handoff. |
 | K-03 | The keyword safety check can't catch every indirect phrasing, and may flag figures of speech. | It is backed by the classifier's `risk` check (Phase 7). False positives and negatives found in Phase 5 will be listed here. |
 | K-04 | The comparison model (mental-health fine-tuned) has not been chosen yet (D-23). | Needed before Phase 9. Phases 2–8 don't depend on it. |
 | K-05 | ~~Chat answers came from placeholders in `app.js`.~~ | **Resolved in Phase 4:** replies come from `/api/chat` (mock or LLM) and are stored. |

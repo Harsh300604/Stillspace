@@ -49,7 +49,7 @@ def _get_text(name: str, default: str) -> str:
 
 LLM_BASE_URL = _get_text("LLM_BASE_URL", "https://openrouter.ai/api/v1")
 LLM_API_KEY = _get_text("LLM_API_KEY", "")
-LLM_MODEL = _get_text("LLM_MODEL", "qwen/qwen3-8b")
+LLM_MODEL = _get_text("LLM_MODEL", "qwen/qwen3-14b")
 CLASSIFIER_MODEL = _get_text("CLASSIFIER_MODEL", LLM_MODEL)
 MOCK_MODE = _get_bool("MOCK_MODE", False)
 STRATEGY_SET = _get_text("STRATEGY_SET", "strategies_4")
