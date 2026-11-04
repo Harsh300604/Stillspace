@@ -62,6 +62,19 @@ FOLLOWUP_CONTACT = _get_text("FOLLOWUP_CONTACT", "")
 # can need well over 30 s, especially the first reply while the model loads.
 LLM_TIMEOUT_SECONDS = _get_int("LLM_TIMEOUT_SECONDS", 120)
 
+# ---------- online version (Phase 11, D-46 to D-51) ----------
+# APP_ENV=production switches on the online safeguards: only researcher-issued
+# codes can sign in, consent text + age question, demo and /docs pages off.
+APP_ENV = _get_text("APP_ENV", "local").lower()
+IS_PRODUCTION = APP_ENV == "production"
+DATABASE_URL = _get_text("DATABASE_URL", "")  # empty = SQLite file; set = Postgres (Supabase)
+CHAT_LIMIT_PER_HOUR = _get_int("CHAT_LIMIT_PER_HOUR", 40)  # per participant
+DAILY_CHAT_LIMIT = _get_int("DAILY_CHAT_LIMIT", 700)  # whole app, protects the model budget
+LOGIN_LIMIT_PER_MINUTE = _get_int("LOGIN_LIMIT_PER_MINUTE", 10)  # per IP address
+AGE_POLICY = _get_text("AGE_POLICY", "18plus_or_guardian")  # or 18plus_only
+if IS_PRODUCTION:
+    DEMO_MODE = False  # preview-day buttons must never be available online
+
 # A relative DB_PATH is resolved from the project root so the database always
 # lands inside the project folder (and therefore on D: for the developer).
 DB_PATH = PROJECT_ROOT / _get_text("DB_PATH", "data/stillspace.db")
@@ -72,6 +85,26 @@ HELPLINES = [
     {"name": "Tele-MANAS", "number": "14416", "alt": "1-800-891-4416", "note": "free, 24x7"},
     {"name": "Emergency", "number": "112", "alt": "", "note": ""},
 ]
+
+
+def production_problems() -> list[tuple[str, str]]:
+    """Settings checked at start-up when APP_ENV=production, as (level, message).
+
+    "stop" problems prevent the app from starting; "warning" ones are printed so
+    you can still test production mode on your own laptop.
+    """
+    if not IS_PRODUCTION:
+        return []
+    problems = []
+    if not FOLLOWUP_CONTACT:
+        problems.append(("stop", "FOLLOWUP_CONTACT is empty: a named adult must follow up on safety flags (spec section 16)."))
+    if AGE_POLICY not in ("18plus_or_guardian", "18plus_only"):
+        problems.append(("stop", "AGE_POLICY must be 18plus_or_guardian or 18plus_only."))
+    if is_mock_mode():
+        problems.append(("warning", "Mock mode is on (no LLM_API_KEY): participants would get canned replies."))
+    if not DATABASE_URL:
+        problems.append(("warning", "DATABASE_URL is empty: data goes to a local SQLite file that most hosts delete on redeploy."))
+    return problems
 
 
 def is_mock_mode() -> bool:

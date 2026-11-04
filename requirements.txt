@@ -8,3 +8,6 @@ python-dotenv>=1.0,<2.0
 # tzdata: Windows has no built-in timezone database, so zoneinfo needs this
 # for APP_TIMEZONE (approved deviation, see implementation.md D-04).
 tzdata>=2024.1
+# psycopg: talks to Postgres (Supabase) for the online version, used only when
+# DATABASE_URL is set (approved deviation, see implementation.md D-47).
+psycopg[binary]>=3.2,<4.0

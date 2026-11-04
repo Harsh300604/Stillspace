@@ -11,9 +11,9 @@
 
 | Item | Value |
 |---|---|
-| Last completed phase | **Phase 8** – Reflection, summary, export |
-| Current phase | **Phase 9 – Evaluation kit** (built, waiting for the developer's checks) |
-| Next phase | Phase 11 – Deployment readiness (Supabase), then Phase 10 – handover docs + mentoring.md |
+| Last completed phase | **Phase 9** – Evaluation kit |
+| Current phase | **Phase 11 – Deployment readiness (Supabase + online safety)** (built, waiting for the developer's checks) |
+| Next phase | Phase 10 – handover docs, student starter, mentoring.md (last) |
 | Build order from here | 8 → 9 → **11 (deployment: Supabase + online safety)** → 10 (docs, student starter, mentoring.md last) |
 | Branch | `claude/gracious-euler-tlrs89` (repo `harsh300604/stillspace`) |
 | Project folder (dev laptop) | `D:\CreatED-cloud\stillspace` |
@@ -22,6 +22,7 @@
 | Model (dev) | Ollama `qwen3:4b-instruct-2507-q4_K_M`, models in `D:\ollama\models` |
 | Model (handoff default) | OpenRouter `qwen/qwen3-14b` |
 | C: free space | 48.48 GB at the start; unchanged by the project |
+| Database (dev) | `DATABASE_URL` is set in the developer's `.env` (Supabase). Comment it out with `#` to use local SQLite (`data\stillspace.db`) |
 
 ### How to start working (developer laptop)
 
@@ -131,11 +132,18 @@ Mock mode: set `LLM_API_KEY=` (empty) and restart.
 - **Note:** `db.py` is 214 lines; it gets restructured in Phase 11 (Postgres).
 - **Checks 1–4:** all passed in the dev chat's run on a fresh copy (mock mode), at the developer's request.
 
-### Phase 9 – Evaluation kit (4 Nov 2026) 🔨 built, waiting for checks
+### Phase 9 – Evaluation kit (4 Nov 2026) ✅
 - **Built:** `scripts/eval_responses.py`: A (plain prompt) vs B (full pipeline) per message and model, with no history or check-ins in either. Writes the full `responses_*.csv` plus a **shuffled blind rating sheet**; `--summarise` merges ratings back; the `ollama:` prefix for local models.
 - **Decision:** the developer left the design open ("what holds up best"), so it's built for a fair, blind comparison (D-53). A second model can be added any time with `--models`.
 - **Verified by the dev chat:** 10/20-row runs, A/B metadata, blind sheet, model switching, mock mode, crisis rows, the summarise round trip with an Excel-encoded file.
 - **Checks 1–4:** all passed in the dev chat's run on a fresh copy, at the developer's request (model server on `localhost:11434` standing in for Ollama).
+
+### Phase 11 – Deployment readiness: Supabase + online safety (4 Nov 2026) 🔨 built, waiting for checks
+- **Built:** `db_connect.py` (SQLite or Postgres), schema files (Postgres with RLS), researcher-issued codes, age and guardian consent, session ownership checks, rate limits (40 per hour, 700 per day; never blocking safety), production lock-down, `create_codes.py`, `safety_report.py`, `delete_participant.py`, Postgres export, `docs/DEPLOYMENT.md` (Railway and Render, pre-launch checklist).
+- **Found while building:** session ids are guessable numbers → every session/chat request now carries the code and the server checks ownership (D-55). Railway/Render put a proxy in front of the app → the sign-in limit reads `X-Forwarded-For`, otherwise all visitors would share one limit.
+- **Verified by the dev chat:** 4 rounds: SQLite regression, the same suites on a real Postgres 16 server, all production safeguards, upgrading an old SQLite file and the online consent page in a browser. Not testable from the dev chat: the developer's own Supabase project and a real Railway/Render deploy.
+- **Test-environment hiccup:** the throwaway Postgres server crashed when the sandbox reset folder permissions → moved it to Postgres's own home directory. Not an app issue.
+- **Heads-up:** the developer's `.env` already has `DATABASE_URL`, so after `git pull` + `pip install -r requirements.txt` the local app writes to Supabase.
 
 ### Plan change after Phase 7 (4 Nov 2026)
 - The developer wants to deploy the app later so the student can share it. **Decision:** Supabase Postgres + online safety, as a new **Phase 11**, built after Phase 9 and before Phase 10 (D-46 to D-50).

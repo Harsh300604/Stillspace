@@ -6,7 +6,6 @@ Python shell: from backend.checkins import score_phq9
 """
 
 import json
-import sqlite3
 from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
@@ -64,13 +63,13 @@ def clean_phq_answers(raw: dict) -> dict:
     return cleaned
 
 
-def local_today(participant: sqlite3.Row) -> date:
+def local_today(participant: dict) -> date:
     """Today's date in APP_TIMEZONE, moved forward by the participant's demo offset."""
     today = datetime.now(ZoneInfo(config.APP_TIMEZONE)).date()
     return today + timedelta(days=participant["demo_day_offset"] or 0)
 
 
-def build_status(conn: sqlite3.Connection, participant: sqlite3.Row, strategy_names: list[str]) -> dict:
+def build_status(conn: db.Connection, participant: dict, strategy_names: list[str]) -> dict:
     """Everything the frontend needs to decide which check-in is due (GET .../status)."""
     today = local_today(participant).isoformat()
     daily = db.latest_checkin(conn, participant["id"], "daily", local_date=today)
@@ -119,7 +118,7 @@ def build_status(conn: sqlite3.Connection, participant: sqlite3.Row, strategy_na
     }
 
 
-def checkin_context(conn: sqlite3.Connection, participant: sqlite3.Row) -> dict:
+def checkin_context(conn: db.Connection, participant: dict) -> dict:
     """Only what the reply prompt may use: today's mood and the latest complete PHQ-9 band.
 
     Never the item answers and never the date of birth (spec 11.4).

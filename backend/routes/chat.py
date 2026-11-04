@@ -17,7 +17,8 @@ from contextlib import closing
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from backend import checkins, classifier, config, db, llm, mock, prompt_builder, safety, strategy_policy
+from backend import checkins, classifier, config, db, llm, mock, prompt_builder, ratelimit, safety, strategy_policy
+from backend.routes.sessions import load_session
 
 router = APIRouter()
 
@@ -29,8 +30,22 @@ META_KEYS = ["emotion", "intensity", "stage", "risk", "confidence", "rationale"]
 
 class ChatBody(BaseModel):
     session_id: int
+    code: str  # checked against the session's owner (D-55)
     message: str
     requested_strategy: str | None = "Automatic"
+
+
+LIMIT_MESSAGE = ("You've reached the message limit for now, so please take a short break and try again later. "
+                 "If you need help right now, call Tele-MANAS on 14416 (free, 24x7) or 112 in an emergency.")
+
+
+def check_chat_limits(participant_id: int) -> None:
+    """Online cost and abuse protection (D-49). Called only AFTER the keyword safety check."""
+    if not ratelimit.allow(f"chat:{participant_id}", config.CHAT_LIMIT_PER_HOUR, 3600):
+        raise HTTPException(429, LIMIT_MESSAGE)
+    if not ratelimit.allow("chat:all", config.DAILY_CHAT_LIMIT, 24 * 3600):
+        print("[chat] daily message limit for the whole app reached")
+        raise HTTPException(429, LIMIT_MESSAGE)
 
 
 def history_as_chat(rows) -> list[dict]:
@@ -82,14 +97,15 @@ def chat(body: ChatBody) -> dict:
 
     started = time.perf_counter()
     with closing(db.get_connection()) as conn:
-        session = db.get_session(conn, body.session_id)
-        if session is None:
-            raise HTTPException(404, "Chat session not found. Please start a new session.")
+        session = load_session(conn, body.session_id, body.code)
 
         # Step 1: deterministic safety check, BEFORE any AI call (spec 11.5).
         rule_id = safety.find_crisis_match(message)
         if rule_id:
             return safety_reply(conn, body, message, "keyword", {"matched_rule": rule_id}, None, started)
+
+        # Limits come after the safety check, so a crisis message is never blocked.
+        check_chat_limits(session["participant_id"])
 
         # History is read BEFORE storing the new message, so it is not sent twice.
         history = history_as_chat(db.recent_messages(conn, body.session_id, config.HISTORY_TURNS))

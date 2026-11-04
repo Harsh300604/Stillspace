@@ -12,10 +12,19 @@ from fastapi.staticfiles import StaticFiles
 from backend import config, db
 from backend.routes import chat, checkins, config_route, participants, sessions
 
+# Online, some settings are required before anything else happens (D-46).
+for level, problem in config.production_problems():
+    print(f"[startup] {level.upper()}: {problem}")
+if any(level == "stop" for level, _ in config.production_problems()):
+    raise SystemExit("[startup] Fix the settings above in your .env (or the host's variables) and start again.")
+
 # Create any missing tables before the first request (safe to repeat every start).
 db.create_tables()
 
-app = FastAPI(title="Stillspace", version=config.APP_VERSION)
+# Online, FastAPI's automatic /docs, /redoc and /openapi.json pages are switched off,
+# so the API is not advertised to visitors.
+docs = {} if not config.IS_PRODUCTION else {"docs_url": None, "redoc_url": None, "openapi_url": None}
+app = FastAPI(title="Stillspace", version=config.APP_VERSION, **docs)
 
 # Each routes/ file owns one group of endpoints; main.py just plugs them in.
 app.include_router(config_route.router)
@@ -36,6 +45,6 @@ def index() -> FileResponse:
 
 # A readable start-up line helps spot a wrong .env without opening the browser.
 print(
-    f"[startup] Stillspace {config.APP_VERSION} | strategies={config.STRATEGY_SET} | "
-    f"mock_mode={config.is_mock_mode()} | demo_mode={config.DEMO_MODE} | db={config.DB_PATH}"
+    f"[startup] Stillspace {config.APP_VERSION} | env={config.APP_ENV} | strategies={config.STRATEGY_SET} | "
+    f"mock_mode={config.is_mock_mode()} | demo_mode={config.DEMO_MODE} | db={db.describe()}"
 )

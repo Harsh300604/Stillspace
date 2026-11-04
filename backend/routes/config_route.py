@@ -26,4 +26,14 @@ def get_config() -> dict:
         "mock_mode": config.is_mock_mode(),
         "demo_mode": config.DEMO_MODE,
         "followup_contact": config.FOLLOWUP_CONTACT,
+        # Online version (Phase 11): the consent page shows the study text and the age question.
+        "app_env": config.APP_ENV,
+        "age_policy": config.AGE_POLICY,
+        "consent_text": consent_text() if config.IS_PRODUCTION else "",
     }
+
+
+def consent_text() -> str:
+    """The study information shown on the online consent page (backend/data/consent.txt)."""
+    text = (config.BACKEND_DATA_DIR / "consent.txt").read_text(encoding="utf-8").strip()
+    return text.replace("{followup_contact}", config.FOLLOWUP_CONTACT or "(not set)")

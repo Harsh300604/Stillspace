@@ -4,6 +4,10 @@
 A session is one conversation. It starts when the chat is first opened and
 ends when the person clicks "Finish & reflect". The summary page is built from
 what the server stored, not from what the browser remembers.
+
+Session ids are simple numbers (1, 2, 3...), so every request also sends the
+participant code, and the server checks that the session belongs to it (D-55).
+Otherwise anyone could guess another person's session id online.
 """
 
 from contextlib import closing
@@ -22,10 +26,11 @@ class SessionBody(BaseModel):
     code: str
 
 
-def load_session(conn, session_id: int):
-    """Get a session or answer 404, so every route handles a wrong id the same way."""
+def load_session(conn, session_id: int, code: str) -> dict:
+    """Get a session that belongs to this participant code, or answer 404 (same answer either way)."""
+    participant = find_participant(conn, code)
     session = db.get_session(conn, session_id)
-    if session is None:
+    if session is None or session["participant_id"] != participant["id"]:
         raise HTTPException(404, "Chat session not found. Please start a new session.")
     return session
 
@@ -47,10 +52,10 @@ def start_session(body: SessionBody) -> dict:
 
 
 @router.post("/api/sessions/{session_id}/end")
-def end_session(session_id: int) -> dict:
+def end_session(session_id: int, body: SessionBody) -> dict:
     """Store ended_at and chat_seconds. The server's clock is used, not the browser's (D-13)."""
     with closing(db.get_connection()) as conn:
-        session = load_session(conn, session_id)
+        session = load_session(conn, session_id, body.code)
         ended_at = db.now_iso()
         chat_seconds = seconds_between(session["started_at"], ended_at)
         db.end_session(conn, session_id, ended_at, chat_seconds)
@@ -60,10 +65,10 @@ def end_session(session_id: int) -> dict:
 
 
 @router.get("/api/sessions/{session_id}/summary")
-def session_summary(session_id: int) -> dict:
-    """Message count, chat time, strategy counts, latest PHQ-9 and reflection answers."""
+def session_summary(session_id: int, code: str) -> dict:
+    """Message count, chat time, strategy counts, latest PHQ-9 and reflection answers (?code=...)."""
     with closing(db.get_connection()) as conn:
-        session = load_session(conn, session_id)
+        session = load_session(conn, session_id, code)
         participant = db.get_participant_by_id(conn, session["participant_id"])
         # A session that was never ended counts up to now.
         chat_seconds = session["chat_seconds"]
