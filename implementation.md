@@ -583,7 +583,7 @@ Before you start: `git pull origin claude/gracious-euler-tlrs89`; Terminal C (`o
 
 **Goal:** the same app runs (a) locally on SQLite exactly as before (student course, offline, mock mode), or (b) online for a small, approved group, with Supabase Postgres, researcher-issued codes, rate limits, a safety report, consent and an age check, and no demo or debug endpoints.
 
-**Status:** 🔨 Built – waiting for your checks.
+**Status:** 🔨 Built. **Your run (4 Nov 2026):** check 2 ✅ on your real Supabase project: `db.describe()` → `postgres (aws-0-ap-northeast-1.pooler.supabase.com)`, all 4 tables `rowsecurity: True`; `create_codes.py --count 3` wrote 3 issued codes. Region is **Tokyo** (see K-10). Checks 3–7 still to report.
 
 **What was built (D-46 to D-55):**
 
@@ -720,3 +720,4 @@ Things the spec leaves open or gets slightly wrong. In each case I picked the si
 | K-07 | A page refresh starts a new chat session, so the conversation disappears from the screen and the summary counts only the current session. All messages are still stored in the database. | Acceptable for the prototype (D-27). Could restore the last session's messages later if wanted. |
 | K-08 | ~~Guessable codes, open demo endpoints and `/docs` online.~~ | **Resolved in Phase 11:** production accepts only issued random codes, session endpoints check ownership (D-55), and demo and `/docs` are off. Still: don't share the link before the `docs/DEPLOYMENT.md` checklist is complete. |
 | K-09 | Rate limits live in memory: they reset when the app restarts and are counted per server process. | Fine for one small Railway/Render instance (D-49). A shared store would be needed if you ever run several instances. |
+| K-10 | Your current Supabase project is in **Tokyo** (`ap-northeast-1`), not Mumbai. Participant data would be stored in Japan, and every database call is a longer round trip from India. The 3 codes created there were shown in the dev chat. | Keep it as the **testing** project. For the real study, create a new project in **South Asia (Mumbai), `ap-south-1`**, mention the storage location in the consent/privacy text, and create fresh codes there. |

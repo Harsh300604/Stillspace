@@ -144,6 +144,7 @@ Mock mode: set `LLM_API_KEY=` (empty) and restart.
 - **Verified by the dev chat:** 4 rounds: SQLite regression, the same suites on a real Postgres 16 server, all production safeguards, upgrading an old SQLite file and the online consent page in a browser. Not testable from the dev chat: the developer's own Supabase project and a real Railway/Render deploy.
 - **Test-environment hiccup:** the throwaway Postgres server crashed when the sandbox reset folder permissions → moved it to Postgres's own home directory. Not an app issue.
 - **Bug caught in the second test run (D-56):** `P001` could sign in online because local testing had already put it into the same Postgres/Supabase database. Fix: an `issued` flag; production accepts only codes made by `create_codes.py`. Codes made before the fix must be re-created.
+- **Developer's run:** connected to their real Supabase project (`aws-0-ap-northeast-1` = **Tokyo**), all 4 tables with RLS on, 3 issued codes created. Advice: keep Tokyo as the test project; create the study project in Mumbai (`ap-south-1`) (K-10).
 - **Heads-up:** the developer's `.env` already has `DATABASE_URL`, so after `git pull` + `pip install -r requirements.txt` the local app writes to Supabase.
 
 ### Plan change after Phase 7 (4 Nov 2026)
