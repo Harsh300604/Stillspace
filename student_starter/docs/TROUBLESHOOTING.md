@@ -75,6 +75,7 @@
 | `password authentication failed` (Supabase) | Wrong password in `DATABASE_URL` | Copy the Session pooler URI again and replace `[YOUR-PASSWORD]`. |
 | `could not translate host name` / connection timeout (Supabase) | You copied the "Direct connection" string | Use Project → **Connect** → **Session pooler** URI. |
 | SSL errors (Supabase) | SSL not requested | Add `?sslmode=require` at the end of `DATABASE_URL`. |
+| Browser keeps loading forever at http://localhost:8000; the terminal stops after `[startup] preparing the database: postgres ...` or shows `STOP: the database is busy` | Another connection holds the tables (an older copy of the app still running, or a connection Supabase's pooler kept open after Ctrl+C), so start-up has to wait | 1) Close every other terminal running uvicorn, or `Get-Process python \| Stop-Process -Force` (stops all Python programs). 2) Start again. 3) Still stuck: Supabase → **SQL Editor** → run `select pid, state, left(query, 60) from pg_stat_activity where datname = current_database() and state like 'idle in transaction%';` then `select pg_terminate_backend(pid) from pg_stat_activity where datname = current_database() and state like 'idle in transaction%';` 4) Need it working right now? Put `#` in front of `DATABASE_URL` to use the local SQLite file. |
 | The local app suddenly writes to Supabase | `DATABASE_URL` is set in `.env` | Put `#` in front of that line to go back to the local SQLite file. |
 
 ## Scripts

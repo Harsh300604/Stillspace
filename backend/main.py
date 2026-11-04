@@ -19,6 +19,7 @@ if any(level == "stop" for level, _ in config.production_problems()):
     raise SystemExit("[startup] Fix the settings above in your .env (or the host's variables) and start again.")
 
 # Create any missing tables before the first request (safe to repeat every start).
+print(f"[startup] preparing the database: {db.describe()} ...", flush=True)
 db.create_tables()
 
 # Online, FastAPI's automatic /docs, /redoc and /openapi.json pages are switched off,
