@@ -129,6 +129,7 @@ Mock mode: set `LLM_API_KEY=` (empty) and restart.
 - The developer wants to deploy the app later so the student can share it. **Decision:** Supabase Postgres + online safety, as a new **Phase 11**, built after Phase 9 and before Phase 10 (D-46 to D-50).
 - **Kept:** SQLite stays the default for local use and the student course.
 - **Flagged:** do not share the current app online. Guessable codes would expose other participants' answers (K-08).
+- **Developer's choices:** hosting on Railway or Render; ages 18+ and under-18 with guardian consent; limits of 40 per hour per participant and 700 per day; **no alert channel** (safety report script + review routine instead). Supabase needs only `DATABASE_URL` (Session pooler URI), and only when Phase 11 starts.
 
 ---
 

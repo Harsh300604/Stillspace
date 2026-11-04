@@ -203,8 +203,11 @@ Each entry has:
 ### Online safety additions (D-48 to D-50)
 - **Researcher-issued, unguessable codes:** without them, anyone could type `P001` and read another person's answers and date of birth (K-08).
 - **Rate limits** protect the paid model budget; **safety replies are never limited**.
-- **Safety alerts** to a chat webhook with code, time and flag type only, never the message text, so the named adult can follow up quickly.
-- **Consent text, an 18+ check by default, a delete-participant script** (right to withdraw), demo and `/docs` pages off.
+- **Limits:** 40 messages per participant per hour, 700 per day in total (developer's numbers).
+- **No alert channel (D-51, developer's choice):** a safety report script (code, time and flag type, no message text) and a **written review routine** instead. *Trade-off:* the follow-up adult only learns about a flag when the report is run, so how often it's run must be agreed before launch. The participant always gets the helplines instantly.
+- **Ages (D-50):** 18+ **and** under-18 with guardian consent. An age question at consent; under-18 needs an extra guardian tick; the signed guardian form is collected outside the app.
+- **Hosting:** Railway or Render (both documented). **Supabase needs only one value**, the Session-pooler connection string, in `DATABASE_URL`.
+- **Consent text, a delete-participant script** (right to withdraw), demo and `/docs` pages off.
 - **Pre-launch checklist** in `docs/DEPLOYMENT.md`: no link is shared until ethics approval, approved consent text, a named follow-up adult and a privacy notice are in place.
 - **Teaching note:** a strong final-session topic. Moving from a prototype to real users changes the responsibilities far more than the code.
 
@@ -226,4 +229,4 @@ Each entry has:
 | 4 Nov 2026 | Phase 5 | Safety section updated (D-40) |
 | 4 Nov 2026 | Phase 6 | Classifier section added (D-41); first real result and no-tuning decision (D-42); qwen3:8b comparison and hybrid-model fix (D-43) |
 | 4 Nov 2026 | Phase 7 | Strategy-aware replies section added (D-44); check-5 method (D-45) |
-| 4 Nov 2026 | after Phase 7 | Deployment plan: Supabase + online safety as Phase 11 (D-46 to D-50) |
+| 4 Nov 2026 | after Phase 7 | Deployment plan: Supabase + online safety as Phase 11 (D-46 to D-50); developer's choices on hosting, ages, limits, no alerts (D-49 to D-51) |
