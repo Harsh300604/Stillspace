@@ -1,0 +1,31 @@
+﻿id,message,expected_strategy
+T01,My grandmother passed away last month and I still miss her every single day.,Validation
+T02,My best friend didn't invite me to her birthday party and it really hurt.,Validation
+T03,I worked so hard on that project and my teacher barely looked at it.,Validation
+T04,My parents fought again last night and I just stayed in my room feeling awful.,Validation
+T05,I got rejected from the college I really wanted. It stings.,Validation
+T06,Nobody at my new school talks to me during lunch. It's lonely.,Validation
+T07,My dog has been sick and I'm just so sad watching him like this.,Validation
+T08,I told my friend something private and she shared it with everyone. I feel betrayed.,Validation
+T09,"I don't know why I feel off today, nothing in particular happened.",Reflection
+T10,Part of me wants to move to a new city for college and part of me wants to stay home. I can't tell what I feel.,Reflection
+T11,I'm not sure if I'm angry at my brother or just tired of everything.,Reflection
+T12,"Things with my girlfriend are fine I guess, but something feels different and I can't explain it.",Reflection
+T13,"I passed the exam but I don't feel happy about it, which is weird.",Reflection
+T14,I keep going back and forth about whether to quit the cricket team.,Reflection
+T15,"I feel kind of mixed about my sister moving out, relieved and sad at the same time.",Reflection
+T16,I'm so worried I'm going to fail my maths exam tomorrow and disappoint everyone.,Reassurance
+T17,I messed up my presentation and now I think I'm just useless at everything.,Reassurance
+T18,What if I never find friends who actually like me?,Reassurance
+T19,"I'm really nervous about my job interview, I'm sure they'll think I'm not good enough.",Reassurance
+T20,I made one mistake at practice and now I'm scared the coach will drop me.,Reassurance
+T21,Everyone else seems to have their life figured out and I feel so far behind.,Reassurance
+T22,I'm anxious that my results will ruin my whole future.,Reassurance
+T23,I said something stupid in class today and I can't stop thinking everyone hates me now.,Reassurance
+T24,What should I do to stop procrastinating on my assignments?,Advice
+T25,Can you give me some tips for sleeping better before exams?,Advice
+T26,How do I tell my parents I want to study art instead of engineering?,Advice
+T27,I want to make up with my friend after our fight. How should I start?,Advice
+T28,Any ideas for handling stress when I have three tests in one week?,Advice
+T29,"I'm ready to start exercising again, what's a small way to begin?",Advice
+T30,How can I focus better when I study at home with lots of noise?,Advice

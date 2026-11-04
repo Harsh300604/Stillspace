@@ -1,0 +1,17 @@
+ABOUT THIS STUDY (edit this text before going online; it must match the consent text your supervising organisation approved)
+
+Study: Stillspace, a student research prototype of a supportive chatbot.
+Research team: [your names and organisation].
+Purpose: to learn how different support styles (for example validation or advice) affect conversations with an AI chatbot.
+
+What you will do: optional check-ins (including the PHQ-9 questionnaire every two weeks), a conversation with the chatbot, and a short reflection.
+
+What is stored: your answers and chat messages, linked to the participant code you were given, never your name. Data is stored on a secure database server for the research project and kept for [retention period, e.g. 12 months], then deleted.
+
+The AI model: your chat messages are sent to an AI provider ([provider name]) to generate replies. Their data policy applies.
+
+Your rights: taking part is voluntary. You can skip any question and stop at any time. To withdraw and have your data deleted, contact {followup_contact}.
+
+Safety: this is not therapy, diagnosis or an emergency service. If a message or answer suggests you may be at risk, the app shows helpline numbers and the research team's named contact, {followup_contact}, may follow up. In an emergency call 112 or Tele-MANAS 14416 (free, 24x7).
+
+Participants under 18 need a parent's or guardian's consent before taking part.

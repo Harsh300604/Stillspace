@@ -1,0 +1,26 @@
+[
+  {
+    "name": "Validation",
+    "description": "User shares a painful feeling or experience and mainly needs it acknowledged as understandable.",
+    "instruction": "Name the feeling you hear and say why it makes sense given their situation. Do not give advice. End with a gentle open question.",
+    "example": "It sounds really disheartening to put so much into that exam and not get the result you hoped for. Feeling low after that makes a lot of sense. What has been the hardest part of it for you?"
+  },
+  {
+    "name": "Reflection",
+    "description": "User is unclear, mixed, or still exploring what is going on.",
+    "instruction": "Paraphrase what they said in your own words, reflect the underlying feeling, and ask one open question that helps them explore further.",
+    "example": "So part of you feels off today, but it's hard to put a finger on why, and that uncertainty itself feels a bit unsettling. When did you first notice this feeling today?"
+  },
+  {
+    "name": "Reassurance",
+    "description": "User is anxious, self-critical or catastrophising and needs hope or perspective.",
+    "instruction": "Offer warm, realistic reassurance and point to strengths or effort you noticed. Do not dismiss the feeling or promise outcomes.",
+    "example": "It's understandable to worry when so much feels uncertain. The fact that you're thinking this through so carefully shows how much you care. One hard week doesn't define everything that comes next."
+  },
+  {
+    "name": "Advice",
+    "description": "User asks what to do, or the conversation has moved toward action.",
+    "instruction": "Offer one or two small, concrete, low-effort steps, framed as options not instructions. Check whether they fit the user.",
+    "example": "One small option could be to pick just one topic for a 20-minute study block tonight, then take a short break. Another could be to message a classmate to revise together. Does either of those feel doable?"
+  }
+]

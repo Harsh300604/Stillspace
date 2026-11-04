@@ -1,0 +1,207 @@
+{
+  "_about": "Crisis words for the deterministic safety check (spec 11.5). 'phrases' are plain text: English/Hinglish ones are matched as whole words, Devanagari ones as text. 'patterns' are regular expressions for flexible wording. Text is normalised first (lower case, straight quotes, k1ll->kill, dieee->die, s.u.i.c.i.d.e->suicide), so write entries in plain lower case. Every entry has an id, which is logged when it matches.",
+  "phrases": [
+    {
+      "id": "en-suicide",
+      "text": "suicide"
+    },
+    {
+      "id": "en-suicidal",
+      "text": "suicidal"
+    },
+    {
+      "id": "en-kms",
+      "text": "kms"
+    },
+    {
+      "id": "en-end-my-life",
+      "text": "end my life"
+    },
+    {
+      "id": "en-ending-my-life",
+      "text": "ending my life"
+    },
+    {
+      "id": "en-take-my-life",
+      "text": "take my own life"
+    },
+    {
+      "id": "en-want-to-die",
+      "text": "want to die"
+    },
+    {
+      "id": "en-wanna-die",
+      "text": "wanna die"
+    },
+    {
+      "id": "en-wish-dead-was",
+      "text": "wish i was dead"
+    },
+    {
+      "id": "en-wish-dead-were",
+      "text": "wish i were dead"
+    },
+    {
+      "id": "en-better-off-dead",
+      "text": "better off dead"
+    },
+    {
+      "id": "en-rather-be-dead",
+      "text": "rather be dead"
+    },
+    {
+      "id": "en-better-without-me",
+      "text": "better off without me"
+    },
+    {
+      "id": "en-no-reason-live",
+      "text": "no reason to live"
+    },
+    {
+      "id": "en-nothing-live-for",
+      "text": "nothing to live for"
+    },
+    {
+      "id": "en-no-point-living",
+      "text": "no point in living"
+    },
+    {
+      "id": "en-cant-go-on-living",
+      "text": "can't go on living"
+    },
+    {
+      "id": "en-cant-go-on-anymore",
+      "text": "can't go on anymore"
+    },
+    {
+      "id": "en-overdose",
+      "text": "overdose"
+    },
+    {
+      "id": "en-hang-myself",
+      "text": "hang myself"
+    },
+    {
+      "id": "en-not-safe-home",
+      "text": "not safe at home"
+    },
+    {
+      "id": "hi-zindagi-khatam",
+      "text": "zindagi khatam"
+    },
+    {
+      "id": "hi-jindagi-khatam",
+      "text": "jindagi khatam"
+    },
+    {
+      "id": "hi-khudkushi",
+      "text": "khudkushi"
+    },
+    {
+      "id": "hi-khud-ko-khatam",
+      "text": "khud ko khatam"
+    },
+    {
+      "id": "hi-jaan-de-dunga",
+      "text": "jaan de dunga"
+    },
+    {
+      "id": "hi-jaan-de-dungi",
+      "text": "jaan de dungi"
+    },
+    {
+      "id": "dev-atmahatya",
+      "text": "आत्महत्या"
+    },
+    {
+      "id": "dev-khudkushi",
+      "text": "खुदकुशी"
+    },
+    {
+      "id": "dev-mar-jana",
+      "text": "मर जाना"
+    },
+    {
+      "id": "dev-marna-chahta",
+      "text": "मरना चाहता"
+    },
+    {
+      "id": "dev-marna-chahti",
+      "text": "मरना चाहती"
+    },
+    {
+      "id": "dev-zindagi-khatam",
+      "text": "ज़िंदगी खत्म"
+    },
+    {
+      "id": "dev-jindagi-khatam",
+      "text": "जिंदगी खत्म"
+    },
+    {
+      "id": "dev-jeena-nahi-chahta",
+      "text": "जीना नहीं चाहता"
+    },
+    {
+      "id": "dev-jeena-nahi-chahti",
+      "text": "जीना नहीं चाहती"
+    }
+  ],
+  "patterns": [
+    {
+      "id": "en-kill-myself",
+      "regex": "\\bkill(ing)? ?my ?self\\b"
+    },
+    {
+      "id": "en-hurt-myself",
+      "regex": "\\b(hurt|hurting|harm|harming|cut|cutting) ?my ?self\\b"
+    },
+    {
+      "id": "en-self-harm",
+      "regex": "\\bself[ -]?harm(ing)?\\b"
+    },
+    {
+      "id": "en-dont-want-live",
+      "regex": "\\b(don'?t|do not|dont) want to (live|be alive|exist)\\b"
+    },
+    {
+      "id": "en-end-it",
+      "regex": "\\bend(ing)? it (all|tonight|forever)\\b"
+    },
+    {
+      "id": "en-take-pills",
+      "regex": "\\b(take|took|taking|swallow|swallowed) (all|a lot of|lots of|too many) (of )?(my |the )?(pills|tablets|meds|medicine)\\b"
+    },
+    {
+      "id": "en-jump-off",
+      "regex": "\\bjump(ing)? (off|from) (a |the |my )?(bridge|building|roof|terrace|balcony)\\b"
+    },
+    {
+      "id": "en-not-safe",
+      "regex": "\\b(i am|i'm|im) not safe\\b"
+    },
+    {
+      "id": "en-someone-hurting-me",
+      "regex": "\\bsomeone (is )?(hurting|hitting|abusing) me\\b"
+    },
+    {
+      "id": "hi-mar-jaana",
+      "regex": "\\bmar ?ja+(na|un|unga|ungi|oon|oonga|oongi)\\b"
+    },
+    {
+      "id": "hi-marna-chahta",
+      "regex": "\\bmarna chaht(a|i)\\b"
+    },
+    {
+      "id": "hi-jeena-nahi",
+      "regex": "\\bj(ee|i)na nahi chaht(a|i)\\b"
+    },
+    {
+      "id": "hi-jine-ka-mann",
+      "regex": "\\bj(ee|i)ne ka (mann|man|mood) nahi\\b"
+    },
+    {
+      "id": "en-sleep-never-wake",
+      "regex": "\\b(sleep|go to sleep|fall asleep) and (never|not) wake up\\b"
+    }
+  ]
+}
