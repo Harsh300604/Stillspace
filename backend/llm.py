@@ -23,8 +23,18 @@ THINK_BLOCK = re.compile(r"<think>.*?(</think>|$)", re.DOTALL | re.IGNORECASE)
 
 
 def strip_thinking(text: str) -> str:
-    """Remove <think> blocks (also an unfinished one cut off by max_tokens) and trim spaces."""
-    return THINK_BLOCK.sub("", text or "").strip()
+    """Remove thinking text and trim spaces.
+
+    Handles three shapes seen in practice:
+      - "<think>...</think> answer"   (normal)
+      - "<think>... (cut off)"         (max_tokens reached while thinking -> empty)
+      - "... thinking ...</think> answer"  (some Ollama templates drop the opening tag)
+    """
+    text = text or ""
+    lower = text.lower()
+    if "</think>" in lower and "<think>" not in lower:
+        text = text[lower.rindex("</think>") + len("</think>"):]
+    return THINK_BLOCK.sub("", text).strip()
 
 
 def _make_client() -> OpenAI:
@@ -37,11 +47,18 @@ def _thinking_off(messages: list[dict], model: str) -> tuple[list[dict], dict]:
     """Ask the provider not to spend tokens on hidden reasoning (spec section 8).
 
     - OpenRouter understands {"reasoning": {"enabled": false}}.
-    - Qwen3 models also understand "/no_think" at the end of the system message,
-      which works on any provider, including Ollama.
-    Thinking that slips through anyway is removed by strip_thinking().
+    - Ollama understands {"think": false} (tested on Ollama 0.40, D-39).
+    - Hybrid Qwen3 models also understand "/no_think" at the end of the system message.
+    Some models always think whatever you send (e.g. Qwen3 "thinking-2507"), so
+    use an instruct model; strip_thinking() removes anything that slips through.
     """
-    extra_body = {"reasoning": {"enabled": False}} if "openrouter.ai" in config.LLM_BASE_URL else {}
+    url = config.LLM_BASE_URL.lower()
+    if "openrouter.ai" in url:
+        extra_body = {"reasoning": {"enabled": False}}
+    elif "11434" in url or "ollama" in url:
+        extra_body = {"think": False}
+    else:
+        extra_body = {}  # unknown provider: send nothing it might reject
     if "qwen3" in model.lower() and messages and messages[0]["role"] == "system":
         messages = [{"role": "system", "content": messages[0]["content"] + "\n/no_think"}] + messages[1:]
     return messages, extra_body
