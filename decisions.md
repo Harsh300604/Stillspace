@@ -263,6 +263,16 @@ Each entry has:
 
 ---
 
+## 10c. Who can use it online: invite-only codes (D-61)
+
+- **Question from the developer:** "shouldn't everyone be able to use the app?"
+- **Decision:** online access stays **invite-only**: codes from `create_codes.py`, one per consented participant, with no public sign-up.
+- **Why:** it is a supervised research study, not a public service (spec). Consent, and verifiable parental consent for under-18s (DPDP Act 2023), must come before use. The no-alert safety design relies on a named adult following up on flagged codes, which only works for known participants. Withdrawal needs a known code. Ethics approval is realistic only for known, monitored participants. Open links invite cost abuse.
+- **"Everyone" today:** everyone the team invites, in any number (batches for a class or group).
+- **Public access later** would be a separate mode with 18+ only, verified sign-up, a privacy policy, monitoring or no PHQ-9, spending caps and new ethics approval. Documented in `docs/DEPLOYMENT.md` §2; not built.
+
+---
+
 ## 11. Scope decisions
 
 - **Classifier (D-21):** prompt-based with Qwen. A trained DistilBERT/DeBERTa classifier is a documented **stretch idea only** (spec section 3 puts it out of scope; 30 test messages are too few to train on; the ESConv dataset would be the source).
@@ -286,3 +296,4 @@ Each entry has:
 | 4 Nov 2026 | after Phase 7 | Deployment plan: Supabase + online safety as Phase 11 (D-46 to D-50); developer's choices on hosting, ages, limits, no alerts (D-49 to D-51) |
 | 4 Nov 2026 | Phase 10 part 2 | `mentoring.md` section added (D-58, D-59) |
 | 4 Nov 2026 | after Phase 10 | User isolation with sign-in tokens (D-60), K-12 |
+| 4 Nov 2026 | after Phase 10 | Invite-only access explained (D-61) |

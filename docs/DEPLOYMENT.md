@@ -38,15 +38,49 @@ Put the string in `.env` as `DATABASE_URL=...`, start uvicorn, and check that th
 
 > While `DATABASE_URL` is set, your local app also writes to Supabase. To go back to local SQLite, put a `#` in front of the `DATABASE_URL` line and restart.
 
-## 2. Participant codes
+## 2. Participant codes (invite-only access)
 
-Online, only codes you create can sign in (`P001` and other made-up codes are refused):
-```powershell
-python scripts/create_codes.py --count 20
-```
-With `DATABASE_URL` set, the codes go straight into Supabase and are marked as **issued**. Codes you typed while testing locally (like `P001`) may also be in the database, but they never work online. Give each code to **one** person privately.
+Online (`APP_ENV=production`) Stillspace is **invite-only**: there is no sign-up button, and only codes the research team creates can sign in. Made-up codes like `P001` or `T001` are refused with "This participant code is not valid".
 
-> Tip: use a **separate Supabase project** for local testing and keep the real one only for the study, so test data never mixes with participant data. The list is saved in `exports\issued_codes_<time>.csv`; keep it like a password list (who got which code is identifying information).
+### Why invite-only (D-48, D-56, D-61)
+Stillspace is a **supervised research study**, not a public app (spec: "not a production product", "not an emergency service"). Every person using it online is a research participant, and some may be in distress. Issued codes make sure that:
+- **consent happened first**: the information sheet and consent, and for under-18s a **signed guardian form**. India's DPDP Act 2023 requires verifiable parental consent for children's data, and an in-app tick alone is not enough;
+- **someone can follow up**: there is no automatic alert, so the named follow-up adult acts on the daily safety report. That only works if each code belongs to a known person;
+- **withdrawal works**: a person's data can be found and deleted by their code;
+- **ethics approval is realistic**: boards approve "known, consented, monitored participants", not an open mental-health chatbot;
+- **costs and abuse are capped**: an open link could be spammed and spend the OpenRouter credit;
+- **codes can't be guessed**: random 8-character codes plus sign-in limits.
+
+### How to create and hand out codes
+1. On your laptop, put the **study's** `DATABASE_URL` in `.env`, the same database the deployed app uses. `APP_ENV` can stay `local` on the laptop.
+2. Create codes (any number; run it again any time for more):
+   ```powershell
+   python scripts/create_codes.py --count 20
+   ```
+   ✅ It prints codes like `SS-73S9-PNS2`, `Created 20 codes in postgres (aws-0-ap-south-1...)`, and saves the list to `exports\issued_codes_<time>.csv`.
+3. **Keep a private allocation list**: which code went to which person, with the date and the guardian form for under-18s. Store it outside the repo, like a password list: it is identifying information. Never paste codes into group chats or shared documents.
+4. **Give each person one code privately** (in person, WhatsApp or email), together with the app link and the study information.
+5. The participant opens the link, enters the code, answers the age question (guardian tick if under 18) and ticks consent. Next time they enter the same code and their history is back, on any device.
+6. **Lost code:** look it up in your allocation list (there is no "reset"). **Withdrawal:** `python scripts/delete_participant.py <code>`. **Test codes** shown to others (e.g. in a chat or demo): delete them the same way before the study.
+
+> Tip: use a **separate Supabase project** for testing and keep the real one only for the study, so test data never mixes with participant data.
+
+### Testing on your laptop
+On your laptop keep `APP_ENV=local` in `.env`: any code works there, and the demo buttons are shown. If your laptop says "This participant code is not valid" for `T001`, your `.env` has `APP_ENV=production`; change it to `local` and restart. Set `APP_ENV=production` **only on the deployed server** (Railway/Render variables).
+
+### If you want everyone to be able to use it (public access)
+This is not built, on purpose. Opening it to anyone with the link turns a study into a public mental-health service. It would need, at least:
+
+| Need | Why |
+|---|---|
+| 18+ only (at least at first) | Avoids verifiable parental consent for children's data |
+| Sign-up with email or phone verification | Reach people, block mass fake accounts, handle deletion requests |
+| Privacy policy, terms, legal review | Public collection of health data (DPDP Act 2023) |
+| A real monitoring and alert process, or no PHQ-9 | Collecting self-harm answers from strangers with no follow-up is hard to justify |
+| Spending caps and abuse protection | An open link can be flooded |
+| A new ethics approval | The risk profile changes completely |
+
+A middle way that works today: hand out codes in **batches** (a class, a club, a volunteer list). `create_codes.py --count 200` takes seconds.
 
 ## 3. OpenRouter (AI model)
 

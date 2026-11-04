@@ -57,6 +57,7 @@ flowchart LR
     V -- no --> X[Refused with a friendly message]
     V -- yes --> F2[Signed in → whatever is due]
 ```
+- **Why no sign-up button?** Online, everyone is a research participant. Codes make sure consent (and guardian consent for under-18s) came first, that the follow-up adult can reach a flagged person, and that a withdrawal can be honoured. See `docs/DEPLOYMENT.md` §2 for the full reasons, how to create and hand out codes, and what a public version would need.
 - Made-up or test codes (like `P001`) are **refused**, even if they exist in the database from testing.
 - Too many attempts from one IP address (10 per minute) are slowed down, so codes can't be guessed.
 - The age answer, guardian confirmation and time of consent are stored with the participant.
@@ -178,7 +179,8 @@ flowchart LR
 
 | Question | Answer |
 |---|---|
-| Can new users sign up? | **Local:** yes, by typing a new code. **Online:** no; the researcher issues codes. |
+| Can new users sign up? | **Local:** yes, by typing a new code. **Online:** no; the researcher issues codes with `python scripts/create_codes.py --count 20` and hands them out privately (invite-only on purpose, see `docs/DEPLOYMENT.md` §2). |
+| Shouldn't everyone be able to use it? | Everyone *you invite* can, in any number (codes can go out in batches). Open sign-up would turn a supervised study into a public mental-health service, which needs 18+ only, verified accounts, a privacy policy, monitoring and new ethics approval. Not built, on purpose. |
 | Can users log in? | Yes, by typing their code (online: plus age question and consent). No password. |
 | Can a user see someone else's data? | No. After sign-in every request carries a sign-in token, and the server takes the participant **from the token**: there is no way to ask for another person's data. Session ids are checked against that participant. Online codes are random and sign-in attempts are limited, so codes can't be guessed. Tokens expire and only their hash is stored. |
 | What does a user need? | A browser and their code. Nothing to install. |

@@ -38,6 +38,7 @@
 | "Stillspace could not start / Cannot reach the Stillspace server" | uvicorn isn't running | Start it again; click **Try again**. |
 | Participant code refused locally | Only letters, digits and hyphens, 3–20 characters | E.g. `P001` (no spaces or symbols). |
 | Code refused online ("This participant code is not valid") | Online, only codes from `create_codes.py` work | Use an issued code; create new ones if needed. Codes made before the Phase 11 fix must be re-created. |
+| "This participant code is not valid" **on your own laptop** for a code like `T001` | `.env` has `APP_ENV=production` (online mode: invite-only codes) | Set `APP_ENV=local`, restart uvicorn, Ctrl+F5. Or sign in with a code from `create_codes.py`. |
 | "Too many sign-in attempts" | 10 attempts per minute per IP | Wait a minute. |
 | Signed out after closing the tab | The sign-in is kept per tab only, on purpose | Type the code again. |
 | "Your sign-in has expired. Please enter your participant code again." | The sign-in token is older than `SIGN_IN_HOURS` (12), or the participant was signed out or deleted | Type the code again. Testing an API call by hand? Send the header `Authorization: Bearer <token>` from the sign-in answer. |
