@@ -110,6 +110,7 @@ Mock mode: set `LLM_API_KEY=` (empty) and restart.
 - **Small fix:** the mock advice rule missed "tips" and "how should I" → more phrases added (mock score 80% → 93%; not a meaningful number, because the same person wrote the rules and the test set).
 - **Accuracy with the real model (developer, check 1):** `qwen3:4b-instruct-2507-q4_K_M` → **27/30 = 90%**, 30/30 valid JSON, no preference bias (10/8/5/7). Misses: T18, T21, T23 (all expected Reassurance; the model chose Validation/Reflection). ~3.4 s per classification on the RTX 4050.
 - **Not tuned on purpose (D-42):** the misses are kept for the student's Session 8 exercise. Confidence is always 0.95+, even when wrong.
+- **`qwen3:8b` comparison (developer, stopped after 5 messages):** all fallbacks ("JSON not closed"), 35–51 s per message. It's a hybrid model that thinks by default, the `/no_think` switch never reached the classifier's single user message, and 8B doesn't fit fully in 6 GB of VRAM → **stay on `qwen3:4b-instruct` for everything**. Code fixed so `/no_think` also reaches single-message prompts (D-43). Remember `Remove-Item Env:CLASSIFIER_MODEL` after a one-off test.
 - **Heads-up for Phase 7:** two model calls per message (classifier + reply) → expect roughly 6–9 s per reply with Ollama.
 
 ---
@@ -125,3 +126,4 @@ Mock mode: set `LLM_API_KEY=` (empty) and restart.
 7. **Mock mode is the safety net for teaching.** Every session can run with no internet and no key.
 8. **Safety changes need a test set.** Every change to `crisis_keywords.json` or `safety.py` should be followed by the 30-row check (`30 rows, 0 mismatches`). Never add an exception for a false positive if it could hide a real crisis.
 9. **A score is only as honest as its test set.** The mock classifier scores 93% because the same person wrote the rules and the test messages. Ask the student who wrote the labels, and whether the model has seen similar examples.
+10. **Bigger isn't automatically better.** On a 6 GB GPU, `qwen3:8b` was 10× slower than the 4B instruct model and, while thinking was still on, produced no usable answers. Measure before switching models.

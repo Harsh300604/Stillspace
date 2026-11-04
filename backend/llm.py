@@ -48,7 +48,7 @@ def _thinking_off(messages: list[dict], model: str) -> tuple[list[dict], dict]:
 
     - OpenRouter understands {"reasoning": {"enabled": false}}.
     - Ollama understands {"think": false} (tested on Ollama 0.40, D-39).
-    - Hybrid Qwen3 models also understand "/no_think" at the end of the system message.
+    - Hybrid Qwen3 models also understand "/no_think" at the end of a message.
     Some models always think whatever you send (e.g. Qwen3 "thinking-2507"), so
     use an instruct model; strip_thinking() removes anything that slips through.
     """
@@ -59,9 +59,22 @@ def _thinking_off(messages: list[dict], model: str) -> tuple[list[dict], dict]:
         extra_body = {"think": False}
     else:
         extra_body = {}  # unknown provider: send nothing it might reject
-    if "qwen3" in model.lower() and messages and messages[0]["role"] == "system":
-        messages = [{"role": "system", "content": messages[0]["content"] + "\n/no_think"}] + messages[1:]
+    if needs_no_think(model) and messages:
+        # Put the switch on the system message if there is one, otherwise on the
+        # last message (the classifier sends a single user message, D-43).
+        index = 0 if messages[0]["role"] == "system" else len(messages) - 1
+        messages = [dict(m) for m in messages]  # copy, so the caller's list is not changed
+        messages[index]["content"] += "\n/no_think"
     return messages, extra_body
+
+
+def needs_no_think(model: str) -> bool:
+    """Only hybrid Qwen3 models (e.g. qwen3:8b, qwen/qwen3-14b) use "/no_think".
+
+    Instruct builds never think and thinking builds always think, so they get nothing.
+    """
+    name = model.lower()
+    return "qwen3" in name and "instruct" not in name and "thinking" not in name
 
 
 def chat_completion(messages: list[dict], temperature: float = 0.7, max_tokens: int = 300,
