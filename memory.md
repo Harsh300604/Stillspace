@@ -121,5 +121,5 @@ Mock mode: set `LLM_API_KEY=` (empty) and restart.
 5. **"Thinking" models** can make a chatbot slow or leak reasoning text. Use instruct models.
 6. **Background apps can hold ports or ignore settings** (the Ollama tray app). When something "is already in use", look for a running copy.
 7. **Mock mode is the safety net for teaching.** Every session can run with no internet and no key.
-9. **A score is only as honest as its test set.** The mock classifier scores 93% because the same person wrote the rules and the test messages. Ask the student who wrote the labels, and whether the model has seen similar examples.
 8. **Safety changes need a test set.** Every change to `crisis_keywords.json` or `safety.py` should be followed by the 30-row check (`30 rows, 0 mismatches`). Never add an exception for a false positive if it could hide a real crisis.
+9. **A score is only as honest as its test set.** The mock classifier scores 93% because the same person wrote the rules and the test messages. Ask the student who wrote the labels, and whether the model has seen similar examples.
