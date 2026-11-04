@@ -161,7 +161,9 @@ The API key is **never** included.
 - The chat header line and the consent text depend on `mock_mode` from `/api/config` (e.g. "Mock mode · replies are not from an AI model"). The full "Mock mode" tag comes in Phase 4.
 - The preview-day card and the "preview day N" label only show when `demo_mode` is true (spec 12). They still work in the browser until Phase 3.
 - **Kept for now** (to be changed in the phase that makes them true): the risk panel's "chat assessment not connected" line (Phase 5), "Reset demo" (Phase 3/8), and the mentor's provisional-wording notes ("Sample daily question · replace with your final wording").
-- The dev chat only checked JS syntax (`node --check`) and searched the files for the words in check 4. Nothing was run in a browser.
+- **Automated verification (at your request, 4 Nov 2026):** the dev chat ran the app on Linux with headless Chromium and scripted checks 1–6 (47 assertions). 45 passed. The 2 "failures" were mistakes in the test script, not the app: (1) the chat page is 982 px tall in a 900 px window, **identical to the mockup** (the side rail is a full screen tall below the 82 px header); (2) the one console error was the outage the test forced on purpose for check 6 (0 errors otherwise). Computed styles match the mockup exactly: colours, fonts, sidebar 245 px, rail 260 px, header 82 px, h1 size. Screenshots of welcome, chat, summary, dark mode and mobile were compared by eye.
+- After that run, the sidebar tag was shortened from "Participant code · no password" to "No password needed" because it wrapped onto two lines, unlike the mockup's one-line tag.
+- Your own manual run on Windows is still the deciding check.
 
 **Reference:** `docs/mockup/Stillspace-2.html` (added in Phase 1).
 
