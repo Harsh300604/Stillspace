@@ -37,9 +37,9 @@ Around the chat there are check-ins (setup, daily mood, PHQ-9 every 14 days, pos
 
 | Phase | Goal | Main files created / changed | Status |
 |---|---|---|---|
-| 0 | Write this plan | `implementation.md` | ✅ Done (awaiting approval) |
-| 1 | Skeleton and config, D: drive setup | folders, `requirements.txt`, `.env.example`, `.gitignore`, `backend/config.py`, `backend/main.py`, `backend/routes/config_route.py`, `backend/data/strategies_4.json`, `backend/data/strategies_esconv8.json`, placeholder `frontend/index.html` | ⬜ Not started |
-| 2 | Frontend port | `frontend/index.html`, `frontend/styles.css`, `frontend/app.js`, `docs/mockup/Stillspace-2.html` (reference copy) | ⬜ Not started |
+| 0 | Write this plan | `implementation.md` | ✅ Approved |
+| 1 | Skeleton and config, D: drive setup | folders, `requirements.txt`, `.env.example`, `.gitignore`, `backend/config.py`, `backend/main.py`, `backend/routes/config_route.py`, `backend/data/strategies_4.json`, `backend/data/strategies_esconv8.json`, placeholder `frontend/index.html`, `docs/mockup/Stillspace-2.html` | 🔨 Built – waiting for your checks |
+| 2 | Frontend port | `frontend/index.html`, `frontend/styles.css`, `frontend/app.js` | ⬜ Not started |
 | 3 | Database, participants, check-ins | `backend/db.py`, `backend/checkins.py`, `backend/routes/participants.py`, `backend/routes/checkins.py`, demo endpoint, `backend/main.py`, `frontend/app.js` | ⬜ Not started |
 | 4 | LLM client, mock mode, basic chat | `backend/llm.py`, `backend/mock.py`, `backend/routes/chat.py`, `backend/data/prompts/plain_system.txt`, `frontend/app.js` | ⬜ Not started |
 | 5 | Safety layer | `backend/safety.py`, `backend/data/crisis_keywords.json`, `backend/data/prompts/crisis_response.txt`, `eval/safety_prompts.csv`, `backend/routes/chat.py`, `backend/routes/checkins.py`, `frontend/app.js`, `frontend/styles.css` (safety badge only) | ⬜ Not started |
@@ -57,7 +57,15 @@ Status key: ⬜ not started · 🔨 built, waiting for your checks · ✅ checks
 
 ### Phase 1: Skeleton and config
 
+**Status:** 🔨 Built – waiting for your checks.
+
 **Goal:** a runnable FastAPI app on D: that serves a placeholder page and `GET /api/config`, with every setting read from `.env`.
+
+**Deviations / notes:**
+- `requirements.txt` uses version ranges pinned to each package's current major version: fastapi `>=0.115,<1.0`, uvicorn `>=0.30,<1.0`, pydantic `>=2.7,<3.0`, openai `>=3.0,<4.0` (the current openai SDK major is 3), python-dotenv `>=1.0,<2.0`, plus the approved `tzdata` (D-04).
+- The mockup was copied to `docs/mockup/Stillspace-2.html` in this phase (resolves K-01).
+- On startup the server prints one `[startup] ...` line showing the strategy set, mock mode, demo mode and DB path, so a wrong `.env` is easy to spot.
+- The dev chat only checked that the JSON files parse and the Python files compile. Nothing was run.
 
 **Files:**
 - `requirements.txt`: fastapi, uvicorn[standard], pydantic, openai, python-dotenv (pinned to their current major versions; see Decisions log D-04 about `tzdata`)
@@ -123,7 +131,7 @@ The API key is **never** included.
    Copy-Item .env.example .env
    uvicorn backend.main:app --reload
    ```
-   **Expect:** `Uvicorn running on http://127.0.0.1:8000` and `Application startup complete.` No tracebacks. Opening http://localhost:8000 shows the placeholder page "Stillspace backend is running".
+   **Expect:** `[startup] Stillspace 0.1.0 | strategies=strategies_4 | mock_mode=True | demo_mode=True | db=D:\Projects\stillspace\data\stillspace.db`, then `Uvicorn running on http://127.0.0.1:8000` and `Application startup complete.` No tracebacks. Opening http://localhost:8000 shows the placeholder page "Stillspace backend is running".
 
 4. **Config endpoint.** Open http://localhost:8000/api/config in the browser (or in Terminal B: `Invoke-RestMethod http://localhost:8000/api/config | ConvertTo-Json -Depth 5`).
    **Expect:** JSON with `"strategy_set": "strategies_4"`, a `strategies` list of exactly **4** (Validation, Reflection, Reassurance, Advice), each with a `description`, `"mock_mode": true`, `"demo_mode": true`, and helplines with 14416 and 112. No `api_key` field anywhere.
@@ -137,13 +145,12 @@ The API key is **never** included.
 
 **Goal:** the mockup served by FastAPI, looking identical, with only the section 12 changes that don't need a database yet.
 
-**Prerequisite:** `Stillspace-2.html` must be in the repo (see Known issues K-01).
+**Reference:** `docs/mockup/Stillspace-2.html` (added in Phase 1).
 
 **Files:**
 - `frontend/index.html`: markup from the mockup; links `/static/styles.css` and `/static/app.js`
 - `frontend/styles.css`: the mockup CSS, unchanged (plus the "Mock mode" tag in Phase 4 and the safety badge style in Phase 5)
 - `frontend/app.js`: the mockup JS plus the `api(path, options)` helper; strategy lists built from `/api/config`; participant-code validation; consent routing stubbed (always goes to setup until Phase 3)
-- `docs/mockup/Stillspace-2.html`: untouched reference copy for side-by-side comparison
 - Wording changes: text claiming "nothing is stored", "no AI is connected" or "scripted replies" is replaced with the accurate text from spec section 12, and the footer disclaimer from spec section 16 appears on every step
 
 **Manual checks:**
@@ -406,7 +413,7 @@ Things the spec leaves open or gets slightly wrong. In each case I picked the si
 | D-01 | The venv activation command is `.\.venv\Scripts\Activate.ps1` (the spec shows `.\\venv\...`, a typo). | The spec creates the venv as `.venv`. |
 | D-02 | The project gets onto D: with `git clone ... D:\Projects\stillspace` and then checking out branch `claude/gracious-euler-tlrs89`. | The spec runs `cd D:\Projects\stillspace` without saying how the folder is created. |
 | D-03 | `$env:TMP`/`$env:TEMP` are set per terminal (as the spec shows) **before** `python -m venv`, so venv creation also uses D:. | Keeps temp files off C: during install. |
-| D-04 | **Needs your OK:** add `tzdata` to `requirements.txt` (a sixth package, about 350 KB, maintained by the Python core team). | On Windows, Python has no built-in timezone database, so `ZoneInfo("Asia/Kolkata")` crashes without it. The spec says "only" 5 packages, but `APP_TIMEZONE` can't work on Windows without this. The alternative is a hard-coded +05:30 offset, which would ignore `APP_TIMEZONE`. |
+| D-04 | **Approved:** add `tzdata` to `requirements.txt` (a sixth package, about 350 KB, maintained by the Python core team). | On Windows, Python has no built-in timezone database, so `ZoneInfo("Asia/Kolkata")` crashes without it. The spec says "only" 5 packages, but `APP_TIMEZONE` can't work on Windows without this. The alternative is a hard-coded +05:30 offset, which would ignore `APP_TIMEZONE`. |
 | D-05 | Empty `backend/__init__.py` and `backend/routes/__init__.py` are added. | So `uvicorn backend.main:app` and `from backend.safety import ...` work the same on every OS. |
 | D-06 | Helpline data lives in `backend/config.py` as `HELPLINES` (Phase 1); `safety.py` re-uses it from Phase 5. | `/api/config` needs helplines in Phase 1, before `safety.py` exists. There is one source, so the numbers can't drift apart. |
 | D-07 | Both strategy JSON files are written in full in Phase 1 (Phase 1 check 5 needs 8 strategies). Phase 6 only reviews or refines their wording. | Order of work. |
@@ -429,6 +436,6 @@ Things the spec leaves open or gets slightly wrong. In each case I picked the si
 
 | ID | Issue | Impact / plan |
 |---|---|---|
-| K-01 | **`Stillspace-2.html` is not in the repository.** Only the spec `.docx` is present. | Phase 1 doesn't need it. **Before Phase 2**, please commit it to the repo root (or attach it again). I'll move it to `docs/mockup/` (D-18). |
+| K-01 | ~~`Stillspace-2.html` was not in the repository.~~ | **Resolved:** you attached it, and it is now committed as `docs/mockup/Stillspace-2.html` (unchanged). |
 | K-02 | The `qwen/qwen3-8b` model ID and its availability on OpenRouter can change over time. | If Phase 4 check 2 fails with "model not found", only `LLM_MODEL` in `.env` needs to change. |
 | K-03 | The keyword safety check can't catch every indirect phrasing, and may flag figures of speech. | It is backed by the classifier's `risk` check (Phase 7). False positives and negatives found in Phase 5 will be listed here. |

@@ -1,0 +1,10 @@
+# Stillspace backend dependencies (spec section 6).
+# Ranges pin each package to its current stable major version.
+fastapi>=0.115,<1.0
+uvicorn[standard]>=0.30,<1.0
+pydantic>=2.7,<3.0
+openai>=3.0,<4.0
+python-dotenv>=1.0,<2.0
+# tzdata: Windows has no built-in timezone database, so zoneinfo needs this
+# for APP_TIMEZONE (approved deviation, see implementation.md D-04).
+tzdata>=2024.1
