@@ -52,7 +52,7 @@ Around the chat there are check-ins (setup, daily mood, PHQ-9 every 14 days, pos
 | 7 | Prompt builder and strategy-aware replies | `backend/strategy_policy.py`, `backend/prompt_builder.py`, `backend/data/prompts/system.txt`, `backend/routes/chat.py`, `backend/checkins.py`, `backend/db.py`, `backend/data/crisis_keywords.json`, `frontend/app.js` | ✅ Done – checks passed |
 | 8 | Reflection, summary, export | `backend/routes/sessions.py` (new), `backend/routes/chat.py`, `backend/db.py`, `backend/main.py`, `frontend/app.js`, `scripts/export_data.py` | ✅ Done – checks passed |
 | 9 | Evaluation kit | `scripts/eval_responses.py` | ✅ Done – checks passed |
-| 10 | Handover docs, student starter, mentoring.md | `README.md`, `docs/SETUP.md`, `docs/ARCHITECTURE.md`, `docs/SAFETY.md`, `docs/TROUBLESHOOTING.md`, `student_starter/`, `mentoring.md` | ⬜ Not started |
+| 10 | Handover docs, student starter, mentoring.md | `README.md`, `flow.md` (new, your request), `docs/SETUP.md`, `docs/ARCHITECTURE.md`, `docs/SAFETY.md`, `docs/TROUBLESHOOTING.md`, `student_starter/`, `mentoring.md` (last) | 🔨 Part 1 built (docs + starter) – waiting for your checks; `mentoring.md` comes after |
 | 11 | Deployment readiness (Supabase + online safety) – **built after Phase 9, before Phase 10** | `backend/db_connect.py` (new), `backend/db.py`, `backend/data/schema_sqlite.sql`, `backend/data/schema_postgres.sql`, `backend/data/consent.txt`, `backend/config.py`, `backend/ratelimit.py`, `backend/main.py`, `backend/checkins.py`, `backend/routes/*`, `frontend/app.js`, `scripts/create_codes.py`, `scripts/safety_report.py`, `scripts/delete_participant.py`, `scripts/export_data.py`, `requirements.txt`, `.env.example`, `docs/DEPLOYMENT.md` | ✅ Done – checks passed |
 
 Status key: ⬜ not started · 🔨 built, waiting for your checks · ✅ checks passed
@@ -550,30 +550,50 @@ Before you start: `git pull origin claude/gracious-euler-tlrs89`; Terminal C (`o
 
 ### Phase 10: Handover docs, student starter and mentoring.md
 
-**Goal:** everything a beginner and the mentor need. `mentoring.md` is written **last**, only after you confirm Phases 1–9 pass.
+**Goal:** everything a beginner and the mentor need. `mentoring.md` is written **last**, only after you confirm the docs and the starter work (spec 14), so it matches the final code.
 
-**Files:**
-- `README.md`: what it is, 10-minute quick start (mock mode), adding an API key, folder map, disclaimer
-- `docs/SETUP.md`: Windows-first beginner setup (default locations, with a note on moving caches if disk is low), macOS/Linux note, OpenRouter key with a spending limit
-- `docs/ARCHITECTURE.md`, `docs/SAFETY.md`, `docs/TROUBLESHOOTING.md`
-- `student_starter/`: full app copy; `safety.check_message` (keyword check still works, plus a TODO for improvements), `classifier.classify`, `strategy_policy.choose_strategy`, `prompt_builder.build_messages`, `llm.chat_completion` as TODO stubs with docstrings, hints and safe placeholder returns
-- `mentoring.md`: 16 × 1-hour sessions per spec 15.1 (overview, safety briefing script, per-session plan, appendix)
+**Status:** 🔨 **Part 1 built** (docs + `student_starter/`), waiting for your checks. **Part 2** (`mentoring.md`) comes after.
 
-**Manual checks:**
+**Part 1: files:**
+- `README.md`: what it is, the 10-minute mock-mode quick start, real model (OpenRouter or Ollama), folder map, documentation index, privacy paragraph, disclaimer.
+- `flow.md` (**new, at your request**): who uses the app; local vs online mode; **sign-up and sign-in** (no accounts: local = any new code creates a participant; online = only researcher-issued codes); the participant journey with the API call and table behind each step; the 7-step chat pipeline; safety; researcher scripts; where data goes; FAQ. Mermaid diagrams (GitHub shows them as pictures).
+- `docs/SETUP.md`: Windows-first beginner setup (Python with "Add to PATH", VS Code, Git, DB Browser; clone; venv; execution policy; pip with timeouts; `.env`; run; browser; every-day routine), optional OpenRouter (with a spending limit) or Ollama (instruct model), a low-disk/D: note, a macOS/Linux table.
+- `docs/ARCHITECTURE.md`: frontend vs backend, the pipeline diagram, every file's job with its teaching session, data/prompt files, tables, endpoints, how to switch model / strategy set / database / production, design choices.
+- `docs/SAFETY.md`: ground rules (synthetic only, approvals), the 5 safety layers, what the keyword check catches, known limits (incl. the kept false positive), the safety test, **what to do if a real disclosure happens**, online safeguards, data and privacy.
+- `docs/TROUBLESHOOTING.md`: every problem met during the build and more (startup, Windows quirks, browser, AI model, Ollama on Windows, database/Supabase, scripts), each with the fix.
+- `student_starter/`: the full app (own `README.md`, `.gitignore`, `data/`) where these are **TODO stubs with step-by-step docstrings, hints and safe placeholders**:
 
-1. Clone the repo into a fresh folder (e.g. `D:\CreatED-cloud\stillspace-test`) and follow `docs/SETUP.md` exactly, as if you were the student (on your laptop, keep the D: rule from Phase 1).
-   **Expect:** the app works end to end in mock mode.
-2. Read `mentoring.md`.
-   **Expect:** all 16 sessions have every part from spec 15.1, and every file and function it names exists.
-3. Copy `student_starter/` to `D:\CreatED-cloud\starter-try` and do the student tasks of **sessions 4 and 7** exactly as written.
-   **Expect:** their "done when" checks pass.
-4. In `student_starter/` (its own venv or the same one):
+  | Session | Stub | Placeholder until written |
+  |---|---|---|
+  | 4 | `llm.chat_completion()` | returns a reply saying it's a TODO (no model called) |
+  | 4 + 9 | `prompt_builder.build_messages()` | plain prompt + new message (no memory, no strategy) |
+  | 6 | `strategy_policy.choose_strategy()` | `"Safety"` line already there (never removed); otherwise the first strategy |
+  | 7 | `classifier.classify()` + `parse_classifier_output()` + `prompts/classifier.txt` (skeleton with TODOs) | mock rules in mock mode; otherwise default values |
+  | 9 | `prompt_builder.build_system_prompt()` | the plain prompt |
+  | 5 | `safety.check_message()` | **fully working** (keyword safety stays on, spec 15), with an optional TODO to study and improve it |
+
+  Every placeholder prints `[TODO Session N] …` in the terminal. Helpers like `strip_thinking`, `extract_json_object`, `clean_risk`, `checkin_lines` stay written, so each session fits in the hour (D-57).
+
+**Automated verification (dev chat):** the starter's safety test → `30 rows, 0 mismatches`; in mock mode on port 8001: check-ins, PHQ, chat, **crisis → Safety response**, reflection, summary, no page errors; with a model configured: placeholders stay safe (TODO reply text, `[TODO Session 4]` / `[TODO Session 7]` printed once each, `eval_classifier.py` runs with `fallback`); **after swapping in the finished functions for Sessions 4 and 7**: `eval_classifier.py` shows `source=llm` on every row, chat replies come from the model, and the 2nd message sends `[system, user, assistant, user]` (memory).
+
+**Manual checks** (spec 14; checks 2 and 3 run after Part 2):
+
+1. Follow `docs/SETUP.md` in a **fresh folder** as if you were the student (on your laptop keep it on D:, e.g. `git clone https://github.com/harsh300604/stillspace.git D:\CreatED-cloud\stillspace-test`, then `git checkout claude/gracious-euler-tlrs89`), without using knowledge from the build. **Expect:** it works end to end in mock mode. Note any step that was unclear.
+2. *(after `mentoring.md`)* Read `mentoring.md`. **Expect:** all 16 sessions have every part from spec 15.1, and every file and function it names exists.
+3. *(after `mentoring.md`)* Copy `student_starter\` to e.g. `D:\CreatED-cloud\starter-try` and do the student tasks of **sessions 4 and 7** exactly as written. **Expect:** their "done when" checks pass.
+4. In `student_starter\` (its own venv, or reuse the main one):
    ```powershell
    cd student_starter
+   ```
+   ```powershell
+   Copy-Item .env.example .env
+   ```
+   ```powershell
    uvicorn backend.main:app --reload --port 8001
    ```
-   **Expect:** the app runs at http://localhost:8001 in mock mode. The TODO functions return safe placeholders, Terminal A prints a clear `TODO (Session N): ...` hint, and crisis messages still trigger the safety response.
+   **Expect:** http://localhost:8001 runs in mock mode; chat replies use "Validation" whatever you request (TODO); a crisis message (S01) gets the **Safety response**; with a model in `.env` the reply says it's a Session 4 TODO and the terminal prints `[TODO Session 4] …`. Safety test in that folder: `30 rows, 0 mismatches`.
 5. Time yourself following the `README.md` quick start in a fresh clone. **Expect:** under 10 minutes.
+6. (Extra) Read `flow.md`. **Expect:** the sign-up/sign-in answers and the diagrams match what you saw while testing.
 
 ---
 
@@ -704,6 +724,7 @@ Things the spec leaves open or gets slightly wrong. In each case I picked the si
 | D-54 | Phase 11 implementation details: connection code split into `backend/db_connect.py` (keeps `db.py` short); schemas moved to `backend/data/schema_*.sql`; participant codes may contain hyphens (issued format `SS-XXXX-XXXX`, alphabet without 0/O/1/I/L); sign-in limit uses the first `X-Forwarded-For` address; daily limit is a rolling 24 hours; production start-up **stops** on missing `FOLLOWUP_CONTACT` or invalid `AGE_POLICY`, **warns** on mock mode or SQLite (so production mode can be tested on a laptop). | Short, readable files; correct behaviour behind Railway/Render's proxy; safe defaults that still allow local testing. |
 | D-55 | **Session endpoints check ownership:** `POST /api/chat` now needs `code` in the body, `POST /api/sessions/{id}/end` needs `{code}`, `GET /api/sessions/{id}/summary` needs `?code=`. A session that doesn't belong to the code gives 404. Applies locally too. | Session ids are 1, 2, 3…; without this, anyone online could read or use another person's session. A small change to the spec's API contract (section 10). |
 | D-56 | **Production accepts only issued codes**: new column `participants.issued` (1 = made by `create_codes.py`); `P001`-style codes created during local testing stay in the database but are refused online. Added to both schemas (Postgres via `ADD COLUMN IF NOT EXISTS`, SQLite via the start-up upgrade). | Found in the second Phase 11 test run: local testing with `DATABASE_URL` set writes guessable codes into the same Supabase database. |
+| D-57 | **Student starter design:** stubs for the 5 spec functions **plus** `parse_classifier_output()`, `build_system_prompt()` and a classifier-prompt skeleton (Session 7 is "write the classifier prompt and JSON parsing"); `build_messages()` has a Session 4 TODO (history = memory) and a Session 9 TODO (strategy prompt); helper functions stay written so each session fits one hour; `choose_strategy()` keeps the `"Safety"` line; `check_message()` stays fully working; placeholders print `[TODO Session N]`; the starter runs on port 8001 with its own `.gitignore` (so its database is never committed). **`flow.md` added** at your request. | Matches the 16-session map; safety never missing (spec 15); student and finished app can run side by side. |
 
 ---
 

@@ -1,0 +1,50 @@
+[
+  {
+    "name": "Question",
+    "description": "User has shared little detail, and a gentle question would help them say more about what is happening.",
+    "instruction": "Ask one open, non-judgemental question that invites them to share more about their situation or feelings. Keep it short and do not stack several questions.",
+    "example": "That sounds like a lot to carry. Would you like to tell me a bit more about what happened today?"
+  },
+  {
+    "name": "Restatement or Paraphrasing",
+    "description": "User has described a situation, and hearing it summarised back would help them feel heard and see it more clearly.",
+    "instruction": "Briefly restate the main facts of what they said in your own words, without adding interpretation or advice, then check that you understood correctly.",
+    "example": "So your project partner stopped replying, and now the deadline is two days away and you're doing it alone. Did I get that right?"
+  },
+  {
+    "name": "Reflection of Feelings",
+    "description": "User expresses emotion directly or indirectly, and naming the feeling would help them feel understood.",
+    "instruction": "Name the emotion you sense beneath their words and reflect it back gently, focusing on the feeling rather than the facts.",
+    "example": "It sounds like you're feeling really let down and maybe a bit lonely, after counting on them for support."
+  },
+  {
+    "name": "Self-Disclosure",
+    "description": "User feels alone or strange for feeling this way, and knowing it is a common experience would help.",
+    "instruction": "Share that many people feel this way in similar situations, to normalise the experience. Never invent or claim personal experiences of your own.",
+    "example": "Many people feel exactly this kind of pressure before results come out, so you're far from alone in feeling this way."
+  },
+  {
+    "name": "Affirmation and Reassurance",
+    "description": "User is self-critical, discouraged or anxious and needs their strengths recognised or some hope.",
+    "instruction": "Affirm the strengths, effort or courage you notice, and offer warm, realistic reassurance. Do not dismiss the feeling or promise outcomes.",
+    "example": "It took real courage to talk about this. The effort you've been putting in shows how much this matters to you."
+  },
+  {
+    "name": "Providing Suggestions",
+    "description": "User asks what to do, or is ready to think about a next step.",
+    "instruction": "Offer one or two small, concrete, low-effort options, framed as possibilities not instructions, and ask whether they fit.",
+    "example": "One option might be writing down the three things worrying you most, then picking the smallest to start with. Would that feel manageable?"
+  },
+  {
+    "name": "Information",
+    "description": "User would benefit from general, non-medical facts or an explanation of how something commonly works.",
+    "instruction": "Give brief, general, accurate information in plain language. Never give medical, medication, diagnostic or legal advice, and suggest a qualified person for specifics.",
+    "example": "It's common for stress to affect sleep, since the body stays on alert when the mind is busy. A counsellor or doctor can help if it keeps happening."
+  },
+  {
+    "name": "Others",
+    "description": "Small talk, greetings, thanks, or messages that do not need a specific support strategy.",
+    "instruction": "Respond warmly and naturally, keep it brief, and gently invite them to share whatever is on their mind.",
+    "example": "You're very welcome. I'm here whenever you'd like to talk about anything else."
+  }
+]

@@ -12,7 +12,7 @@
 | Item | Value |
 |---|---|
 | Last completed phase | **Phase 11** – Deployment readiness (Supabase + online safety) |
-| Current phase | – (Phase 10 not started yet) |
+| Current phase | **Phase 10 – Part 1** (docs, flow.md, student_starter) built, waiting for checks; Part 2 = mentoring.md |
 | Next phase | Phase 10 – handover docs, student starter, mentoring.md (last) |
 | Build order from here | 8 → 9 → **11 (deployment: Supabase + online safety)** → 10 (docs, student starter, mentoring.md last) |
 | Branch | `claude/gracious-euler-tlrs89` (repo `harsh300604/stillspace`) |
@@ -146,6 +146,12 @@ Mock mode: set `LLM_API_KEY=` (empty) and restart.
 - **Bug caught in the second test run (D-56):** `P001` could sign in online because local testing had already put it into the same Postgres/Supabase database. Fix: an `issued` flag; production accepts only codes made by `create_codes.py`. Codes made before the fix must be re-created.
 - **Developer's run:** connected to their real Supabase project (`aws-0-ap-northeast-1` = **Tokyo**), all 4 tables with RLS on, 3 issued codes created. Advice: keep Tokyo as the test project; create the study project in Mumbai (`ap-south-1`) (K-10).
 - **Heads-up:** the developer's `.env` already has `DATABASE_URL`, so after `git pull` + `pip install -r requirements.txt` the local app writes to Supabase.
+
+### Phase 10 – Part 1: handover docs + student starter (4 Nov 2026) 🔨 built, waiting for checks
+- **Built:** `README.md`, **`flow.md`** (requested: users, sign-up/sign-in, journey, chat pipeline, safety, researcher side, data, FAQ), `docs/SETUP.md`, `docs/ARCHITECTURE.md`, `docs/SAFETY.md` (incl. what to do after a real disclosure), `docs/TROUBLESHOOTING.md` (every issue from this build), `student_starter/` (TODO stubs per session, safe placeholders, working safety).
+- **Developer's question answered:** no accounts or passwords. Locally a new code = sign-up; online only researcher-issued codes work (no self sign-up).
+- **Verified by the dev chat:** the starter runs in mock mode and with a model (safe placeholders, `[TODO Session N]` prints), safety 30/0 inside the starter, and swapping in the finished Session 4 + 7 functions gives `source=llm` and working memory.
+- **Next:** the developer checks Part 1 (SETUP from a fresh folder, starter on port 8001, README timing) → then `mentoring.md` (Part 2).
 
 ### Plan change after Phase 7 (4 Nov 2026)
 - The developer wants to deploy the app later so the student can share it. **Decision:** Supabase Postgres + online safety, as a new **Phase 11**, built after Phase 9 and before Phase 10 (D-46 to D-50).

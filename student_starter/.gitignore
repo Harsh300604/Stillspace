@@ -1,0 +1,14 @@
+# Secrets: the API key lives only in .env on your own machine.
+.env
+
+# Virtual environment
+.venv/
+
+# Local data: never commit real participant data.
+data/*.db
+data/*.db-journal
+exports/
+
+# Python caches
+__pycache__/
+*.pyc

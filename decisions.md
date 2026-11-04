@@ -230,7 +230,21 @@ Each entry has:
 
 ---
 
-## 10. Scope decisions
+## 10. Handover: docs and the student starter (Phase 10)
+
+### The student starter (D-57)
+- **What's left to write:** the 5 spec functions (`chat_completion`, `check_message`, `choose_strategy`, `classify`, `build_messages`) **plus** `parse_classifier_output`, `build_system_prompt` and the classifier prompt text, mapped to Sessions 4, 6, 7 and 9.
+- **What stays written:** everything else, including small helpers (thinking-text removal, JSON extraction, risk cleaning, check-in lines), so each session fits in one hour.
+- **Safety is never a TODO:** `check_message()` works from day one, and the `"Safety"` line in `choose_strategy()` is already there with "never remove this". The student *studies* safety (Session 5); they don't *build* it from zero.
+- **Safe placeholders:** each stub returns something harmless (a reply saying it's a TODO, default classifier values, the first strategy, the plain prompt) and prints `[TODO Session N]`, so the app always runs and the student sees exactly what's missing.
+- **Teaching note:** the finished app in the main folder is the answer key. The verification swapped in the finished functions to prove the "done when" checks are reachable.
+
+### `flow.md`
+- Added at the developer's request: a plain-language map of users, sign-up and sign-in (no accounts; codes only), the journey, the chat pipeline, safety and the researcher's scripts. A good first read for the mentor and the student.
+
+---
+
+## 11. Scope decisions
 
 - **Classifier (D-21):** prompt-based with Qwen. A trained DistilBERT/DeBERTa classifier is a documented **stretch idea only** (spec section 3 puts it out of scope; 30 test messages are too few to train on; the ESConv dataset would be the source).
 - **Extra checks (D-19):** some phases have extra checks marked "(Extra)". All the spec's checks are kept.
@@ -238,7 +252,7 @@ Each entry has:
 
 ---
 
-## 11. Changelog of this file
+## 12. Changelog of this file
 
 | Date | Phase | Change |
 |---|---|---|
@@ -249,4 +263,5 @@ Each entry has:
 | 4 Nov 2026 | Phase 8 | Summary, reflection and export (D-52) |
 | 4 Nov 2026 | Phase 9 | Evaluation design: A vs B, blind rating sheet (D-53) |
 | 4 Nov 2026 | Phase 11 | Built: Supabase support, online safeguards, session ownership (D-54, D-55); issued-codes fix (D-56) |
+| 4 Nov 2026 | Phase 10 (part 1) | Handover docs, flow.md, student starter design (D-57) |
 | 4 Nov 2026 | after Phase 7 | Deployment plan: Supabase + online safety as Phase 11 (D-46 to D-50); developer's choices on hosting, ages, limits, no alerts (D-49 to D-51) |
