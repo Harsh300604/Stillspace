@@ -109,8 +109,10 @@ def login_participant(body: CodeBody, request: Request) -> dict:
         participant = db.get_participant(conn, code)
         created = participant is None
         if config.IS_PRODUCTION:
-            if created:
-                print(f"[participants] refused unknown code from {client_ip(request)}")
+            # Only issued codes: codes typed during local testing (e.g. P001) may also be in
+            # the database, but they are guessable, so they never work online (D-56).
+            if created or not participant["issued"]:
+                print(f"[participants] refused {'unknown' if created else 'non-issued'} code from {client_ip(request)}")
                 raise HTTPException(403, INVALID_CODE)
             db.update_participant(conn, participant["id"], consent_fields(body))
             conn.commit()

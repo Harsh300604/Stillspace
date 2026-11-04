@@ -46,7 +46,7 @@ def main() -> None:
         while len(codes) < args.count:
             code = new_code(args.prefix.upper())
             if db.get_participant(conn, code) is None:  # practically never taken, but check anyway
-                db.create_participant(conn, code)
+                db.create_participant(conn, code, issued=True)
                 codes.append(code)
         conn.commit()
 

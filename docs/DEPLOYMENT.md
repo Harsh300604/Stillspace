@@ -42,7 +42,9 @@ Online, only codes you create can sign in (`P001` and other made-up codes are re
 ```powershell
 python scripts/create_codes.py --count 20
 ```
-With `DATABASE_URL` set, the codes go straight into Supabase. Give each code to **one** person privately. The list is saved in `exports\issued_codes_<time>.csv`; keep it like a password list (who got which code is identifying information).
+With `DATABASE_URL` set, the codes go straight into Supabase and are marked as **issued**. Codes you typed while testing locally (like `P001`) may also be in the database, but they never work online. Give each code to **one** person privately.
+
+> Tip: use a **separate Supabase project** for local testing and keep the real one only for the study, so test data never mixes with participant data. The list is saved in `exports\issued_codes_<time>.csv`; keep it like a password list (who got which code is identifying information).
 
 ## 3. OpenRouter (AI model)
 

@@ -19,7 +19,8 @@ USING_POSTGRES = bool(config.DATABASE_URL)
 Connection = Any  # a sqlite3 or psycopg connection; both have execute(), commit() and close()
 
 # Columns added after the first version (Phase 11). Older SQLite files get them on start-up.
-ADDED_PARTICIPANT_COLUMNS = {"age_group": "TEXT NULL", "guardian_consent": "INTEGER DEFAULT 0", "consent_at": "TEXT NULL"}
+ADDED_PARTICIPANT_COLUMNS = {"age_group": "TEXT NULL", "guardian_consent": "INTEGER DEFAULT 0", "consent_at": "TEXT NULL",
+                             "issued": "INTEGER DEFAULT 0"}
 
 
 def get_connection() -> Connection:

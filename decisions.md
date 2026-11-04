@@ -222,6 +222,7 @@ Each entry has:
 - **Hosting:** Railway or Render (both documented). **Supabase needs only one value**, the Session-pooler connection string, in `DATABASE_URL`.
 - **Consent text, a delete-participant script** (right to withdraw), demo and `/docs` pages off.
 - **Session ownership (D-55, found while building):** session ids are simple numbers, so a visitor could have guessed another person's id. Every chat and summary request now carries the participant code, and the server checks the session belongs to it. *Teaching note: a classic security bug ("insecure direct object reference") and a good discussion of why ids alone are not access control.*
+- **Only issued codes online (D-56, found in testing):** "refuse codes that don't exist" wasn't enough, because local testing with the Supabase database writes guessable codes like `P001` into it. Codes from `create_codes.py` are now marked `issued`, and only those sign in online. *Teaching note: shared databases between test and production are a classic source of security holes; ideally use a separate Supabase project for testing.*
 - **Behind a proxy:** on Railway/Render every request arrives from the host's proxy, so the sign-in limit reads the visitor's real address from `X-Forwarded-For`; otherwise all visitors would share one limit.
 - **Same code for both worlds (D-54):** `db_connect.py` hides the two small differences between SQLite and Postgres (placeholders and new ids), so all other files stay the same. The student course still runs on SQLite.
 - **Pre-launch checklist** in `docs/DEPLOYMENT.md`: no link is shared until ethics approval, approved consent text, a named follow-up adult and a privacy notice are in place.
@@ -247,5 +248,5 @@ Each entry has:
 | 4 Nov 2026 | Phase 7 | Strategy-aware replies section added (D-44); check-5 method (D-45) |
 | 4 Nov 2026 | Phase 8 | Summary, reflection and export (D-52) |
 | 4 Nov 2026 | Phase 9 | Evaluation design: A vs B, blind rating sheet (D-53) |
-| 4 Nov 2026 | Phase 11 | Built: Supabase support, online safeguards, session ownership (D-54, D-55) |
+| 4 Nov 2026 | Phase 11 | Built: Supabase support, online safeguards, session ownership (D-54, D-55); issued-codes fix (D-56) |
 | 4 Nov 2026 | after Phase 7 | Deployment plan: Supabase + online safety as Phase 11 (D-46 to D-50); developer's choices on hosting, ages, limits, no alerts (D-49 to D-51) |

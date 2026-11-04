@@ -10,7 +10,8 @@ CREATE TABLE IF NOT EXISTS participants (
     demo_day_offset INTEGER DEFAULT 0,
     age_group TEXT NULL,               -- '18plus' | 'under18' (online version, D-50)
     guardian_consent INTEGER DEFAULT 0,
-    consent_at TEXT NULL
+    consent_at TEXT NULL,
+    issued INTEGER DEFAULT 0           -- 1 = made by scripts/create_codes.py; only these sign in online (D-56)
 );
 CREATE TABLE IF NOT EXISTS checkins (
     id INTEGER PRIMARY KEY,

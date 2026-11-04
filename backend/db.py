@@ -32,9 +32,12 @@ def get_participant_by_id(conn: Connection, participant_id: int) -> dict | None:
     return run(conn, "SELECT * FROM participants WHERE id = ?", (participant_id,)).fetchone()
 
 
-def create_participant(conn: Connection, code: str) -> dict:
-    """Add a new participant with default settings and return the stored row."""
-    insert(conn, "INSERT INTO participants (code, created_at) VALUES (?, ?)", (code, now_iso()))
+def create_participant(conn: Connection, code: str, issued: bool = False) -> dict:
+    """Add a new participant and return the stored row.
+
+    issued=True only for codes made by scripts/create_codes.py: online, only those can sign in (D-56).
+    """
+    insert(conn, "INSERT INTO participants (code, created_at, issued) VALUES (?, ?, ?)", (code, now_iso(), int(issued)))
     return get_participant(conn, code)
 
 
