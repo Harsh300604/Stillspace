@@ -151,6 +151,9 @@ Each entry has:
 - `scripts/eval_classifier.py` prints accuracy, per-strategy precision/recall, a confusion table and the **preference-bias check** (how often each strategy is predicted).
 - The 30 test messages are synthetic and labelled for the 4-strategy set.
 - **Teaching note:** the mock classifier scores 93% only because the same person wrote the rules and the test messages. A good discussion of overfitting and test-set honesty (Session 8).
+- **First real result (D-42):** `qwen3:4b-instruct` on Ollama scored **27/30 = 90%** with 30/30 valid JSON and no preference bias. The 3 misses were all "Reassurance" messages that the model read as "Validation"/"Reflection" (self-criticism phrased as a feeling).
+- **Decision: no tuning on the test set.** The misses become the Session 8 exercise: the student edits strategy descriptions, re-runs the script and discusses whether the improvement would hold on *new* messages.
+- **Confidence isn't trustworthy:** the model said 0.95+ even when wrong, so the app never uses it to make decisions.
 
 ---
 
@@ -168,4 +171,4 @@ Each entry has:
 |---|---|---|
 | 4 Nov 2026 | after Phase 4 | File created; covers D-01 to D-39 |
 | 4 Nov 2026 | Phase 5 | Safety section updated (D-40) |
-| 4 Nov 2026 | Phase 6 | Classifier section added (D-41) |
+| 4 Nov 2026 | Phase 6 | Classifier section added (D-41); first real result and no-tuning decision (D-42) |

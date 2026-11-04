@@ -108,7 +108,9 @@ Mock mode: set `LLM_API_KEY=` (empty) and restart.
 - **Design choice from the developer's Phase 2 suggestion:** prompt-based classification with Qwen first; a trained DistilBERT/DeBERTa classifier stays a stretch idea (D-21).
 - **Verified by the dev chat:** 13 parser edge cases; evaluation in mock mode, against a fake model (retry and fallback paths) and with the ESConv-8 warning. Not yet verified: the real model's accuracy (developer, check 1).
 - **Small fix:** the mock advice rule missed "tips" and "how should I" → more phrases added (mock score 80% → 93%; not a meaningful number, because the same person wrote the rules and the test set).
-- **Accuracy with the real model:** _to be filled in from the developer's check 1._
+- **Accuracy with the real model (developer, check 1):** `qwen3:4b-instruct-2507-q4_K_M` → **27/30 = 90%**, 30/30 valid JSON, no preference bias (10/8/5/7). Misses: T18, T21, T23 (all expected Reassurance; the model chose Validation/Reflection). ~3.4 s per classification on the RTX 4050.
+- **Not tuned on purpose (D-42):** the misses are kept for the student's Session 8 exercise. Confidence is always 0.95+, even when wrong.
+- **Heads-up for Phase 7:** two model calls per message (classifier + reply) → expect roughly 6–9 s per reply with Ollama.
 
 ---
 

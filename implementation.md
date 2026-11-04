@@ -363,7 +363,21 @@ Before you start: `git pull origin claude/gracious-euler-tlrs89`, keep Terminal 
 
 **Goal:** a robust classifier returning valid JSON every time (real or mock), plus an evaluation script.
 
-**Status:** 🔨 Built – waiting for your checks.
+**Status:** 🔨 Built, checks 1–3 passed on your laptop (4 Nov 2026).
+
+**Results with `qwen3:4b-instruct-2507-q4_K_M` (Ollama, RTX 4050):**
+
+| Measure | Result |
+|---|---|
+| Accuracy | **27/30 = 90%** |
+| Valid JSON | 30/30 (`source=llm` for every row; 0 retries, 0 fallbacks) |
+| Per strategy (recall) | Validation 8/8 · Reflection 7/7 · Reassurance **5/8** · Advice 7/7 |
+| Predicted counts (bias check) | Validation 10 · Reflection 8 · Reassurance 5 · Advice 7 (no preference bias) |
+| Misses | T18 "What if I never find friends…" → Reflection; T21 "…I feel so far behind" → Validation; T23 "…everyone hates me now" → Validation |
+| Speed | ~3.4 s per message (8.3 s for the first while the model loads) |
+| Other | Confidence was 0.95–0.98 on every row, even the misses (not calibrated; don't rely on it). Risk was `low` on all 30 (no crisis wording in the set). |
+
+**Decision:** the prompt is **not** tuned for these 3 misses, because tuning on the test set would make the score meaningless. The misses become the Session 8 exercise ("improve descriptions") in mentoring.md (D-42).
 
 **Files:**
 - `backend/classifier.py`: `classify(message, history, strategies)` → `{strategy, emotion, intensity, stage, risk, confidence, rationale, source, latency_ms}`; `parse_classifier_output()` (removes thinking text and code fences, finds the first `{...}`, validates with pydantic, keeps values in range); `build_classifier_prompt()`; `fallback_result()`. Temperature 0, max 200 tokens, model `CLASSIFIER_MODEL`, one retry, then defaults.
@@ -561,6 +575,7 @@ Things the spec leaves open or gets slightly wrong. In each case I picked the si
 | D-39 | **Thinking control, tested on your Ollama 0.40.14 (4 Nov 2026).** `ollama run --think=false` and the `/no_think` text were ignored by the `qwen3:4b` tag. Over the API, `think: false` moved the thinking into a separate `reasoning` field (reply clean, but still slow and token-hungry). `reasoning_effort: "none"` put the thinking **into** the reply, ending in `</think>` with no opening tag. **So:** (a) `llm.py` sends `{"think": false}` to Ollama URLs (`11434`/`ollama`), `{"reasoning": {"enabled": false}}` to OpenRouter, and nothing to other providers; (b) `strip_thinking()` also removes text before a lone `</think>`; (c) use a Qwen3 **instruct** tag on Ollama (`qwen3:4b-instruct-2507-q4_K_M`), because the plain `qwen3:4b` tag is an always-thinking build. | Prevents thinking text from reaching a user with any model, and avoids empty "Fallback reply" answers caused by thinking using up the 300-token limit. |
 | D-40 | Safety details: (a) normalisation as described in Phase 5 (apostrophes removed; look-alike digits swapped inside words only; `!` never swapped; separators between letters removed; stretched letters checked both ways); (b) Devanagari phrases match as plain text; (c) the crisis user message is stored with `used_strategy="Safety"` and the matched rule id in `meta_json`; (d) the PHQ item-9 notice now shows the helplines and the follow-up contact; (e) the session safety flag resets on New session or refresh. | (a)–(b) catch common spelling tricks without false negatives; (c) makes false alarms reviewable; (d) spec 11.5 / section 4 table; (e) spec 11.5 says "in this session". |
 | D-41 | Classifier details: the whole prompt goes as one **user** message; placeholders are filled with `.replace()`; temperature 0, max 200 tokens; one retry, then the spec's defaults; risk values other than none/low/high → **high**; strategy names matched case-insensitively (unknown → first in the file); history shown as `User:` / `Stillspace:` lines; `eval_classifier.py` adds the project folder to `sys.path` so `python scripts/eval_classifier.py` works; the test set is labelled for strategies_4 (the script warns otherwise); mock rules map to the closest ESConv-8 name. Wired into the chat in Phase 7. | Robust JSON from small models; safety-first on unclear risk; works with the exact command in the spec. |
+| D-42 | The classifier prompt and strategy descriptions are **not** tuned after the first real run (90%), and the self-reported `confidence` is not used for decisions. | Tuning on the 30 test messages would overfit them (the score would stop meaning anything). The 3 Reassurance misses are kept as a ready-made student exercise (Session 8). Confidence was 0.95+ even when wrong. |
 
 ---
 
