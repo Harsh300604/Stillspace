@@ -57,6 +57,8 @@ Around the chat there are check-ins (setup, daily mood, PHQ-9 every 14 days, pos
 
 Status key: ⬜ not started · 🔨 built, waiting for your checks · ✅ checks passed
 
+**Merged into `main` (4 Nov 2026, PR #1).** The `git pull origin claude/gracious-euler-tlrs89` lines in the phase checks below are history; use `git pull origin main` from now on.
+
 **After Phase 10 (4 Nov 2026):** user isolation with server-issued sign-in tokens (D-60). New `backend/auth.py` and `auth_tokens` table; endpoints `/api/me/status`, `PATCH /api/me`, `/api/logout`; the code is sent only at sign-in. Applied to `student_starter/` and all docs. ✅ Tested (30-check isolation test on SQLite, Postgres and the starter).
 
 **Build order (D-46):** 8 → 9 → **11** → 10. Phase 11 (deployment) was added after the spec. It is built before Phase 10 so that the handover docs, `student_starter/` and `mentoring.md` (still written last, as the spec requires) describe the final code, including deployment.

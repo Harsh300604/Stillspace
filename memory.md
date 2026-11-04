@@ -15,7 +15,7 @@
 | Current phase | none – build complete (4 Nov 2026) |
 | Next step | Developer's go-live tasks (see `docs/DEPLOYMENT.md` checklist); mentor starts the 16 sessions with `mentoring.md` |
 | Build order from here | 8 → 9 → **11 (deployment: Supabase + online safety)** → 10 (docs, student starter, mentoring.md last) |
-| Branch | `claude/gracious-euler-tlrs89` (repo `harsh300604/stillspace`) |
+| Branch | **`main`** (repo `harsh300604/stillspace`). The build branch `claude/gracious-euler-tlrs89` was merged in PR #1 on 4 Nov 2026; get updates with `git pull origin main` |
 | Project folder (dev laptop) | `D:\CreatED-cloud\stillspace` |
 | Python | 3.11.9 (installed at `C:\Program Files\Python311`; venv and packages on D:) |
 | GPU | NVIDIA GeForce RTX 4050 Laptop GPU, 6 GB (used by Ollama) · RAM 16 GB |
