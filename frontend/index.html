@@ -6,6 +6,7 @@
     - sidebar box and About dialog reworded to describe storage and AI use accurately
     - #view is now a div inside .center so the footer disclaimer can sit under every step
     - #participantbox (signed-in code + Switch participant link) added under the steps
+    - #mocktag ("Mock mode") added to the header tools, shown only in mock mode
 -->
 <html lang="en">
 <head>
@@ -44,6 +45,7 @@
         <div><strong id="pagetitle">Welcome to Stillspace</strong><div class="sub">AI-mediated support · Research prototype</div></div>
       </div>
       <div class="tools">
+        <span class="tag" id="mocktag" hidden title="No AI model is connected: replies are built-in mock replies">Mock mode</span>
         <button class="fontdown" id="smaller" aria-label="Decrease text size">A−</button>
         <button id="larger" aria-label="Increase text size">A＋</button>
         <button id="theme" aria-label="Toggle dark mode">◐ Theme</button>

@@ -6,8 +6,8 @@
   layout and behaviour are kept. Every change required by spec section 12 is
   marked with a "CHANGED:" comment so it is easy to compare with the mockup.
 
-  Phase 3 status: strategies, participants and check-ins use the server.
-  Real chat replies (Phase 4) are not connected yet. Look for "STUB (Phase N)".
+  Phase 4 status: strategies, participants, check-ins and chat replies use the
+  server. Strategy-aware replies arrive in Phase 7. Look for "STUB (Phase N)".
 */
 
 const $ = id => document.getElementById(id);
@@ -35,16 +35,6 @@ const phqQuestions = [
 ];
 const tones = ['#d9eadb', '#f4e9b8', '#f5d2b4', '#efc7c7'];
 
-// STUB (Phase 4): placeholder replies until the chat calls POST /api/chat.
-// CHANGED: reworded so they no longer describe themselves as prewritten demo text.
-const placeholderReplies = {
-  Validation: 'It makes sense to want space to talk about what is on your mind. What would you like to feel understood about?',
-  Reflection: 'Sometimes it helps to slow down and name the part that feels most important. What would you like to explore?',
-  Reassurance: 'You do not have to figure everything out in this moment. What would feel supportive right now?',
-  Advice: 'If you would like a practical step, you could pause and choose one small thing within your control. Would you prefer to explore a next step or keep talking?'
-};
-const genericPlaceholderReply = 'Thank you for sharing that. Would you like to tell me a little more about it?';
-
 // ---------- Participant code (CHANGED: new, spec section 12) ----------
 
 // 3-20 letters or digits; stored upper-case (implementation.md D-09).
@@ -69,6 +59,10 @@ let participantCode = loadStoredCode();
 // saved answers). null means nobody is signed in yet.
 let status = null;
 let finishing = false;  // stops a double click from saving a check-in twice
+
+// CHANGED: chat state for the server (Phase 4).
+let sessionId = null;   // id from POST /api/sessions; a new one for each "New session"
+let chatError = null;   // {message, text} after a failed send, shown with a Retry button
 
 // Mood buttons are stored by name so the database is readable (same order as the buttons).
 const MOOD_LABELS = ['Low', 'Unsettled', 'Neutral', 'Okay', 'Good'];
@@ -499,37 +493,72 @@ function chat() {
   document.querySelectorAll('#chips button').forEach(b => b.onclick = () => { $('input').value = b.textContent; send(); });
   $('finish').onclick = advance;
   $('returnSurvey').onclick = () => go(1);
+  ensureSession().catch(error => notify(error.message));  // CHANGED: one server session per chat
+}
+
+// CHANGED: create the chat session the first time the chat is opened (spec section 12).
+async function ensureSession() {
+  if (sessionId || !status) return sessionId;
+  const result = await api('/api/sessions', { method: 'POST', body: { code: participantCode } });
+  sessionId = result.session_id;
+  return sessionId;
+}
+
+// Badge text for a reply: the strategy once Phase 7 adds it, otherwise where the reply came from.
+function replyBadge(m) {
+  if (m.strategy) return m.strategy;
+  return { mock: 'Mock reply', fallback: 'Fallback reply' }[m.source] || 'AI reply';
 }
 
 // CHANGED: badges no longer say "Sample welcome" / "... example".
 function drawMessages() {
   if (!$('messages')) return;
-  $('messages').innerHTML = `<div class="message"><div class="author">∿ Stillspace <span class="strategybadge">Welcome</span></div><p>Welcome. You can start wherever feels comfortable. Would you like to talk something through, feel heard, or explore a small next step?</p></div>` + messages.map(m => `<div class="message ${m.role}">${m.role === 'assistant' ? `<div class="author">∿ Stillspace <span class="strategybadge">${esc(m.strategy)}</span></div>` : ''}<p style="white-space:pre-wrap">${esc(m.text)}</p></div>`).join('') + (busy ? '<p class="tiny" role="status">Stillspace is typing…</p>' : '');
+  $('messages').innerHTML = `<div class="message"><div class="author">∿ Stillspace <span class="strategybadge">Welcome</span></div><p>Welcome. You can start wherever feels comfortable. Would you like to talk something through, feel heard, or explore a small next step?</p></div>` + messages.map(m => `<div class="message ${m.role}">${m.role === 'assistant' ? `<div class="author">∿ Stillspace <span class="strategybadge">${esc(replyBadge(m))}</span></div>` : ''}<p style="white-space:pre-wrap">${esc(m.text)}</p></div>`).join('') + (busy ? '<p class="tiny" role="status">Stillspace is typing…</p>' : '')
+    + (chatError && !busy ? `<div class="chaterror" role="alert"><span>${esc(chatError.message)}</span><button type="button" id="retrySend">Retry</button></div>` : '');
+  if ($('retrySend')) $('retrySend').onclick = retrySend;
   $('messages').scrollTop = $('messages').scrollHeight;
   if ($('chips')) $('chips').style.display = messages.length ? 'none' : 'flex';
 }
 
-// STUB (Phase 4): still answers in the browser like the mockup; Phase 4 calls POST /api/chat.
+// CHANGED: replies come from POST /api/chat (spec section 12): typing
+// indicator while waiting, send disabled, friendly error with Retry on failure.
 function send() {
   const text = $('input').value.trim();
   if (!text || busy) return;
   messages.push({ role: 'user', text, requestedStrategy: preferred });
   $('input').value = '';
+  requestReply(text);
+}
+
+// Retry re-sends the same text; the user message is already on screen.
+function retrySend() {
+  if (chatError && !busy) requestReply(chatError.text);
+}
+
+async function requestReply(text) {
   busy = true;
-  $('send').disabled = true;
+  chatError = null;
+  if ($('send')) $('send').disabled = true;
   drawMessages();
-  const selected = strategies[(messages.filter(m => m.role === 'user').length - 1) % strategies.length];
-  const token = epoch;
-  setTimeout(() => {
-    if (token !== epoch) return;
-    implemented = selected;
-    messages.push({ role: 'assistant', text: placeholderReplies[selected] || genericPlaceholderReply, strategy: selected });
-    busy = false;
-    drawMessages();
-    if ($('send')) $('send').disabled = !$('input').value.trim();
-    renderContext();
-  }, 650);
   renderContext();
+  const token = epoch;  // if "New session" is pressed meanwhile, ignore this answer
+  try {
+    await ensureSession();
+    const result = await api('/api/chat', { method: 'POST', body: { session_id: sessionId, message: text, requested_strategy: preferred } });
+    if (token !== epoch) return;
+    if (result.used_strategy) implemented = result.used_strategy;
+    messages.push({ role: 'assistant', text: result.reply, strategy: result.used_strategy, source: result.source });
+  } catch (error) {
+    if (token !== epoch) return;
+    chatError = { message: error.message, text };
+  } finally {
+    if (token === epoch) {
+      busy = false;
+      drawMessages();
+      if ($('send')) $('send').disabled = !$('input').value.trim();
+      renderContext();
+    }
+  }
 }
 
 // ---------- Step 3: reflection ----------
@@ -556,21 +585,21 @@ function summary() {
   renderContext();
 }
 
-// CHANGED: "New session" keeps the participant and their check-in history and
-// only clears the conversation (spec section 12). STUB (Phase 4): will also
-// create a new chat session on the server.
+// CHANGED: "New session" keeps the participant and their check-in history,
+// clears the conversation and starts a new server session (spec section 12).
 function reset() {
   if (!status) { switchParticipant(); return; }
   if (messages.length && !confirm('Start a new session? Your check-ins stay saved; this conversation will be cleared from the screen.')) return;
   epoch++;
   messages = []; post = {}; implemented = null; busy = false; started = null; elapsed = 0;
+  sessionId = null; chatError = null;  // the next chat creates a fresh server session
   enterChat();
 }
 
 // CHANGED: forget the code in this tab and go back to the consent page.
 function switchParticipant() {
   clearStoredCode();
-  participantCode = ''; status = null;
+  participantCode = ''; status = null; sessionId = null; chatError = null;
   epoch++;
   step = unlocked = 0; consent = false; mood = null; preferred = 'Automatic'; implemented = null; tab = 'fortnight';
   messages = []; phq = {}; extra = {}; daily = {}; setup = {}; post = {}; busy = false;
@@ -596,6 +625,7 @@ async function start() {
   try {
     appConfig = await api('/api/config');
     strategies = appConfig.strategies.map(s => s.name);
+    $('mocktag').hidden = !appConfig.mock_mode;  // CHANGED: small "Mock mode" tag (spec 11.7)
   } catch (error) {
     $('view').innerHTML = `<div class="intro"><div class="card"><strong>Stillspace could not start</strong><p class="sub">${esc(error.message)}</p><button class="primary" id="retryStart">Try again</button></div></div>`;
     $('retryStart').onclick = start;

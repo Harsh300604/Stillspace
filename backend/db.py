@@ -144,6 +144,41 @@ def get_checkin(conn: sqlite3.Connection, checkin_id: int) -> dict:
     return result
 
 
+# ---------- chat sessions and messages ----------
+
+def create_session(conn: sqlite3.Connection, participant_id: int) -> int:
+    """Start a new chat session and return its id."""
+    cursor = conn.execute("INSERT INTO sessions (participant_id, started_at) VALUES (?, ?)", (participant_id, now_iso()))
+    return cursor.lastrowid
+
+
 def get_session(conn: sqlite3.Connection, session_id: int) -> sqlite3.Row | None:
-    """Find a chat session by id (sessions are created from Phase 4 on)."""
+    """Find a chat session by id."""
     return conn.execute("SELECT * FROM sessions WHERE id = ?", (session_id,)).fetchone()
+
+
+def insert_message(conn: sqlite3.Connection, session_id: int, role: str, text: str, **details) -> int:
+    """Store one chat message. `details` may hold any other messages column (source, model, ...)."""
+    columns = ["requested_strategy", "classified_strategy", "used_strategy", "meta_json",
+               "safety_flag", "source", "model", "latency_ms"]
+    values = [details.get(c) for c in columns]
+    values[columns.index("safety_flag")] = details.get("safety_flag") or "none"
+    cursor = conn.execute(
+        f"INSERT INTO messages (session_id, role, text, {', '.join(columns)}, created_at)"
+        f" VALUES (?, ?, ?, {', '.join('?' for _ in columns)}, ?)",
+        [session_id, role, text, *values, now_iso()],
+    )
+    return cursor.lastrowid
+
+
+def recent_messages(conn: sqlite3.Connection, session_id: int, limit: int) -> list[sqlite3.Row]:
+    """The last `limit` messages of a session, oldest first (the order the model reads them)."""
+    rows = conn.execute("SELECT * FROM messages WHERE session_id = ? ORDER BY id DESC LIMIT ?",
+                        (session_id, limit)).fetchall()
+    return list(reversed(rows))
+
+
+def count_messages(conn: sqlite3.Connection, session_id: int, role: str) -> int:
+    """How many messages of one role a session has (used to vary mock replies)."""
+    return conn.execute("SELECT COUNT(*) FROM messages WHERE session_id = ? AND role = ?",
+                        (session_id, role)).fetchone()[0]

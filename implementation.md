@@ -40,8 +40,8 @@ Around the chat there are check-ins (setup, daily mood, PHQ-9 every 14 days, pos
 | 0 | Write this plan | `implementation.md` | ✅ Approved |
 | 1 | Skeleton and config, D: drive setup | folders, `requirements.txt`, `.env.example`, `.gitignore`, `backend/config.py`, `backend/main.py`, `backend/routes/config_route.py`, `backend/data/strategies_4.json`, `backend/data/strategies_esconv8.json`, placeholder `frontend/index.html`, `docs/mockup/Stillspace-2.html` | ✅ Done – checks 1–5 passed |
 | 2 | Frontend port | `frontend/index.html`, `frontend/styles.css`, `frontend/app.js` | ✅ Done – checks passed |
-| 3 | Database, participants, check-ins | `backend/db.py`, `backend/checkins.py`, `backend/routes/participants.py`, `backend/routes/checkins.py`, demo endpoint, `backend/main.py`, `frontend/app.js`, `frontend/index.html` | 🔨 Built – waiting for your checks |
-| 4 | LLM client, mock mode, basic chat | `backend/llm.py`, `backend/mock.py`, `backend/routes/chat.py`, `backend/data/prompts/plain_system.txt`, `frontend/app.js` | ⬜ Not started |
+| 3 | Database, participants, check-ins | `backend/db.py`, `backend/checkins.py`, `backend/routes/participants.py`, `backend/routes/checkins.py`, demo endpoint, `backend/main.py`, `frontend/app.js`, `frontend/index.html` | ✅ Done – checks passed |
+| 4 | LLM client, mock mode, basic chat | `backend/llm.py`, `backend/mock.py`, `backend/routes/chat.py`, `backend/db.py`, `backend/main.py`, `backend/data/prompts/plain_system.txt`, `frontend/app.js`, `frontend/index.html`, `frontend/styles.css` | 🔨 Built – waiting for your checks |
 | 5 | Safety layer | `backend/safety.py`, `backend/data/crisis_keywords.json`, `backend/data/prompts/crisis_response.txt`, `eval/safety_prompts.csv`, `backend/routes/chat.py`, `backend/routes/checkins.py`, `frontend/app.js`, `frontend/styles.css` (safety badge only) | ⬜ Not started |
 | 6 | Strategy classifier | `backend/classifier.py`, `backend/data/prompts/classifier.txt`, strategy JSON review, `backend/mock.py`, `eval/test_messages.csv`, `scripts/eval_classifier.py` | ⬜ Not started |
 | 7 | Prompt builder and strategy-aware replies | `backend/prompt_builder.py`, `backend/strategy_policy.py`, `backend/data/prompts/system.txt`, `backend/routes/chat.py`, `frontend/app.js` | ⬜ Not started |
@@ -197,7 +197,7 @@ Before you start: `git pull origin claude/gracious-euler-tlrs89`, make sure `.en
 
 **Goal:** participants, scheduling and check-ins are saved in SQLite, with PHQ-9 scored on the server and the frontend routing by status.
 
-**Status:** 🔨 Built – waiting for your checks.
+**Status:** ✅ Done (4 Nov 2026). The dev chat ran checks 1–8 on a fresh copy at your request: all passed, including the DB one-liners and `DEMO_MODE=false`. Check 3's one-liner was fixed for PowerShell (D-31).
 
 **Files:**
 - `backend/db.py`: `get_connection()`, `create_tables()` (all 4 tables from spec 9, including `sessions`/`messages` for Phase 4), participant and check-in helpers
@@ -254,31 +254,45 @@ Before you start: `git pull origin claude/gracious-euler-tlrs89`, restart the se
 
 **Goal:** chat works end to end with a plain (strategy-free) prompt, in mock mode and with a real key, with friendly errors.
 
+**Status:** 🔨 Built – waiting for your checks.
+
 **Files:**
-- `backend/llm.py`: `chat_completion(messages, temperature, max_tokens, model)` → `(text, model, latency_ms)`; strips `<think>…</think>`; disables thinking where the provider supports it
-- `backend/mock.py`: `mock_reply(strategy)` with the mockup's canned replies (reworded) and about 600 ms simulated latency; `mock_classify()` is added in Phase 6
-- `backend/data/prompts/plain_system.txt`: a short plain system prompt (reused as condition A in Phase 9)
-- `backend/routes/chat.py`: `POST /api/sessions`, `POST /api/chat` (history = last `HISTORY_TURNS` messages, logs both messages)
-- `frontend/app.js`: creates a session on first entry to chat, `send()` → `/api/chat`, typing indicator, send disabled while waiting, friendly error with Retry button, "Mock mode" tag
+- `backend/llm.py`: `chat_completion(messages, temperature, max_tokens, model)` → `{"text", "model", "latency_ms"}`, `strip_thinking()`, `LLMError`. Thinking is switched off (D-15, D-33) and `<think>` text is always stripped.
+- `backend/mock.py`: `mock_reply(strategy, turn)`. Two reworded canned replies per mockup strategy, about 600 ms delay, and a different reply each turn.
+- `backend/data/prompts/plain_system.txt`: the plain prompt (also condition A in Phase 9, D-14)
+- `backend/routes/chat.py`: `POST /api/sessions`, `POST /api/chat` (history = last `HISTORY_TURNS` messages, both messages stored, console log line)
+- `backend/db.py`: `create_session`, `insert_message`, `recent_messages`, `count_messages`
+- `backend/main.py`: includes the chat router
+- `frontend/app.js`: a server session on first chat entry (and a new one after "New session"); `send()` calls `/api/chat`; typing indicator; send disabled while waiting; friendly error with **Retry**; reply badge
+- `frontend/index.html` + `frontend/styles.css`: small **"Mock mode"** tag in the header tools; a `[hidden]` rule (the mockup's `.tag` style would otherwise override `hidden`); error-line style
+
+**What was done / deviations:**
+- Model **errors** (wrong key, unknown model, no internet) return HTTP 502 with a friendly message. The page shows it with a **Retry** button, the terminal prints the real error, and **nothing is stored**, so Retry doesn't duplicate messages. An **empty** model reply (e.g. all thinking) becomes a gentle fallback reply with `source="fallback"` (D-32).
+- Until Phase 7 the reply badge shows where the reply came from ("Mock reply", "AI reply" or "Fallback reply"), and "Currently used by model" stays "Awaiting first reply" (D-34).
+- `backend/db.py` is now about 185 lines, a little over the ~150 guideline, because all SQL stays in one file for the student. It can be split later if needed.
+- **Automated verification (dev chat, Linux + headless Chromium):** 15 browser checks passed in three setups: mock mode; a **fake OpenAI-compatible server** standing in for a real key (it returned `<think>` text, which was stripped; history and `/no_think` reached the model; an empty reply became the fallback); and a wrong key (friendly error + Retry, 0 rows stored, real error in the terminal). A real OpenRouter call could not be tested from the dev chat's network, so **check 2 is yours alone**.
 
 **Manual checks:**
+
+Before you start: `git pull origin claude/gracious-euler-tlrs89`, restart the server, press **Ctrl+F5**.
 
 0. (Model availability, D-23; no key needed) In PowerShell:
    ```powershell
    (Invoke-RestMethod https://openrouter.ai/api/v1/models).data | Where-Object id -like "qwen/*" | Select-Object id, context_length | Format-Table -AutoSize
    ```
-   **Expect:** a list of Qwen model IDs that includes `qwen/qwen3-8b`. If it is missing, pick the closest Qwen model from the list and set `LLM_MODEL` in `.env`.
-1. `.env` has no `LLM_API_KEY`. Restart, go to chat, send "I had a long day".
-   **Expect:** a reply in about 0.6 s, and a small **"Mock mode"** tag visible. Terminal A logs a line like `[chat] source=mock 601ms`.
-2. Put a real OpenRouter key in `.env` (`LLM_API_KEY=sk-or-...`), restart, send three messages that refer back to each other.
-   **Expect:** no Mock mode tag. Replies are coherent, 2–5 sentences, contain no `<think>` text, and remember the earlier messages.
-3. Change the key to `sk-or-wrong`, restart, send a message.
-   **Expect:** the chat shows a friendly error with a **Retry** button (no stack trace). Terminal A shows the real error (e.g. `AuthenticationError ... 401`).
-4. In Terminal B:
+   **Expect:** a list of Qwen model IDs that includes `qwen/qwen3-8b`. If it is missing, choose the closest Qwen model from the list and set `LLM_MODEL` in `.env`.
+1. `.env` has `LLM_API_KEY=` (empty). Sign in, go to chat, send "I had a long day", then a second message.
+   **Expect:** a small **Mock mode** tag next to A−/A＋/Theme. "Stillspace is typing…" shows and **Send** is disabled while waiting. A reply arrives in about 0.6 s with the badge **"Mock reply"**, and the second reply is different from the first. Terminal A shows `[chat] strategy=- safety=none source=mock model=mock 600ms`.
+2. Create an OpenRouter key (https://openrouter.ai → Keys; set a small credit limit), put it in `.env` as `LLM_API_KEY=sk-or-...`, restart, reload. Send three messages that build on each other (e.g. "I had a long day" → "mostly because of a meeting" → "what did I say was the cause?").
+   **Expect:** no Mock mode tag. Replies are coherent, 2–5 sentences, contain no `<think>` text, have the badge **"AI reply"**, and the third reply remembers the meeting. Terminal A shows `source=llm model=qwen/qwen3-8b NNNNms`.
+3. Change the key to `LLM_API_KEY=sk-or-wrong`, restart, send a message.
+   **Expect:** under your message a yellow line "The AI model could not be reached just now…" with a **Retry** button (no stack trace). Terminal A shows the real reason, e.g. `[chat] LLM error: AuthenticationError: Error code: 401 ...`. Put the real key back afterwards (or empty it for mock mode).
+4. In a second terminal:
    ```powershell
-   python -c "import sqlite3; c=sqlite3.connect('data/stillspace.db'); [print(r) for r in c.execute('select id, role, source, model, latency_ms from messages order by id desc limit 6')]"
+   python -c "import sqlite3; c=sqlite3.connect('data/stillspace.db'); [print(r) for r in c.execute('select id, session_id, role, source, model, latency_ms from messages order by id desc limit 6')]"
    ```
-   **Expect:** user and assistant rows. Assistant rows have `source` = `mock`, `llm` or `fallback`, and `latency_ms` filled.
+   **Expect:** user rows (source `None`) and assistant rows with `source` `mock`, `llm` or `fallback`, a `model`, and `latency_ms` filled. There are no rows for the failed wrong-key attempt.
+5. (Extra) Click **＋ New session** and send a message, then run the check-4 command again. **Expect:** the newest rows have a higher `session_id`.
 
 ---
 
@@ -493,6 +507,10 @@ Things the spec leaves open or gets slightly wrong. In each case I picked the si
 | D-29 | Saving "Requested by you" (PATCH) is wired now rather than in Phase 7. Phase 7 check 3 still tests it. | It shares code with the setup preference built in this phase. |
 | D-30 | The PHQ item-9 rule lives in `checkins.score_phq9()` for now. Phase 5 moves it into `safety.phq_item9_flag()` as planned, without changing behaviour. | Phase 3 needs it before `safety.py` exists. |
 | D-31 | `python -c "..."` one-liners in this file only use **single quotes** inside. Values go in as `?` parameters. | Windows PowerShell 5.1 removes embedded `\"` quotes before passing them to Python, which caused a `SyntaxError` in Phase 3 check 3. This will be noted in docs/TROUBLESHOOTING.md (Phase 10). |
+| D-32 | LLM **errors** → HTTP 502 + friendly message + Retry, nothing stored. **Empty** output → fallback reply (`source="fallback"`). | Spec 5 step 8 says "on error or empty output, return a gentle fallback message", but Phase 4 check 3 expects a friendly error with Retry on a wrong key. Retry is more useful for errors; the fallback covers empty replies. Safety replies (Phase 5) happen before the LLM call, so this never affects them. |
+| D-33 | For Qwen3 models, `llm.py` adds `/no_think` to the end of the system message, besides OpenRouter's `reasoning.enabled=false`. | Qwen3's documented switch, which works on any provider, including Ollama. It saves tokens and latency. |
+| D-34 | Until Phase 7 the reply badge shows the source ("Mock reply" / "AI reply" / "Fallback reply"). | There is no strategy yet; the badge still tells you which path answered. |
+| D-35 | The "Mock mode" tag sits in the header tools, so it is visible on every step. | Spec 11.7 asks for a small tag; the header is always visible, also on mobile. |
 
 ---
 
@@ -504,5 +522,5 @@ Things the spec leaves open or gets slightly wrong. In each case I picked the si
 | K-02 | The `qwen/qwen3-8b` model ID and its availability on OpenRouter can change over time. | If Phase 4 check 2 fails with "model not found", only `LLM_MODEL` in `.env` needs to change. |
 | K-03 | The keyword safety check can't catch every indirect phrasing, and may flag figures of speech. | It is backed by the classifier's `risk` check (Phase 7). False positives and negatives found in Phase 5 will be listed here. |
 | K-04 | The comparison model (mental-health fine-tuned) has not been chosen yet (D-23). | Needed before Phase 9. Phases 2–8 don't depend on it. |
-| K-05 | Until Phase 4, chat answers come from placeholder replies in `app.js` and are not saved, although the text says replies come from an AI model. Check-in saving is real since Phase 3. | Fixed by Phase 4. |
+| K-05 | ~~Chat answers came from placeholders in `app.js`.~~ | **Resolved in Phase 4:** replies come from `/api/chat` (mock or LLM) and are stored. |
 | K-06 | A mood or style chosen on the consent page **before** signing in is not saved: after sign-in the page shows what the server has stored. | Minor. Choose them after signing in. |

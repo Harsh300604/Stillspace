@@ -14,3 +14,9 @@
 /* Participant code hint turns a warm red when the code is not valid yet. */
 .codehint.invalid{color:#a2472f}
 body.dark .codehint.invalid{color:#f0a58c}
+/* Elements with the hidden attribute must stay hidden even if a class (like
+   .tag) sets display. Used for the "Mock mode" tag and the participant box. */
+[hidden]{display:none!important}
+/* Chat error line with a Retry button (Phase 4). */
+.chaterror{display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:var(--gold);border-radius:12px;padding:10px 14px;font-size:.82rem}
+.chaterror button{padding:6px 12px;font-size:.78rem}
