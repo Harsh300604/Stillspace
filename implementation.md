@@ -47,8 +47,8 @@ Around the chat there are check-ins (setup, daily mood, PHQ-9 every 14 days, pos
 | 2 | Frontend port | `frontend/index.html`, `frontend/styles.css`, `frontend/app.js` | ✅ Done – checks passed |
 | 3 | Database, participants, check-ins | `backend/db.py`, `backend/checkins.py`, `backend/routes/participants.py`, `backend/routes/checkins.py`, demo endpoint, `backend/main.py`, `frontend/app.js`, `frontend/index.html` | ✅ Done – checks passed |
 | 4 | LLM client, mock mode, basic chat | `backend/llm.py`, `backend/mock.py`, `backend/routes/chat.py`, `backend/db.py`, `backend/main.py`, `backend/data/prompts/plain_system.txt`, `frontend/app.js`, `frontend/index.html`, `frontend/styles.css` | ✅ Done – checks passed |
-| 5 | Safety layer | `backend/safety.py`, `backend/data/crisis_keywords.json`, `backend/data/prompts/crisis_response.txt`, `eval/safety_prompts.csv`, `backend/routes/chat.py`, `backend/checkins.py`, `frontend/app.js`, `frontend/styles.css`, `frontend/index.html` | 🔨 Built – waiting for your checks |
-| 6 | Strategy classifier | `backend/classifier.py`, `backend/data/prompts/classifier.txt`, strategy JSON review, `backend/mock.py`, `eval/test_messages.csv`, `scripts/eval_classifier.py` | ⬜ Not started |
+| 5 | Safety layer | `backend/safety.py`, `backend/data/crisis_keywords.json`, `backend/data/prompts/crisis_response.txt`, `eval/safety_prompts.csv`, `backend/routes/chat.py`, `backend/checkins.py`, `frontend/app.js`, `frontend/styles.css`, `frontend/index.html` | ✅ Done – checks passed |
+| 6 | Strategy classifier | `backend/classifier.py`, `backend/data/prompts/classifier.txt`, `backend/mock.py`, `eval/test_messages.csv`, `scripts/eval_classifier.py` | 🔨 Built – waiting for your checks |
 | 7 | Prompt builder and strategy-aware replies | `backend/prompt_builder.py`, `backend/strategy_policy.py`, `backend/data/prompts/system.txt`, `backend/routes/chat.py`, `frontend/app.js` | ⬜ Not started |
 | 8 | Reflection, summary, export | `backend/routes/chat.py` (end + summary), `frontend/app.js`, `scripts/export_data.py` | ⬜ Not started |
 | 9 | Evaluation kit | `scripts/eval_responses.py` | ⬜ Not started |
@@ -314,7 +314,7 @@ Before you start: `git pull origin claude/gracious-euler-tlrs89`, restart the se
 
 **Goal:** deterministic crisis detection that works in every mode, with the fixed crisis reply, the safety badge, the PHQ item-9 rule in `safety.py`, and the risk indicator.
 
-**Status:** 🔨 Built. **Checks 1–7 all passed in the dev chat's run on a fresh copy (4 Nov 2026, at your request)**, with a model server standing in for Ollama: S01–S20 → safety reply 20/20 (0 model calls), N01–N10 → AI reply 10/10, `30 rows, 0 mismatches`, crisis reply in mock mode and with a broken model (`NotFoundError 404` in the log), risk indicator incl. the New-session and PHQ item-9 cases, DB rows with `matched_rule`, `FOLLOWUP_CONTACT` shown. Waiting for your OK to mark it done.
+**Status:** ✅ Done (4 Nov 2026). **Checks 1–7 all passed in the dev chat's run on a fresh copy (4 Nov 2026, at your request)**, with a model server standing in for Ollama: S01–S20 → safety reply 20/20 (0 model calls), N01–N10 → AI reply 10/10, `30 rows, 0 mismatches`, crisis reply in mock mode and with a broken model (`NotFoundError 404` in the log), risk indicator incl. the New-session and PHQ item-9 cases, DB rows with `matched_rule`, `FOLLOWUP_CONTACT` shown.
 
 **Files:**
 - `backend/safety.py`: `normalise()`, `variants()`, `find_crisis_match()` (returns the rule id), `check_message()` (True/False), `crisis_response()`, `phq_item9_flag()`, `HELPLINES`
@@ -363,25 +363,37 @@ Before you start: `git pull origin claude/gracious-euler-tlrs89`, keep Terminal 
 
 **Goal:** a robust classifier returning valid JSON every time (real or mock), plus an evaluation script.
 
+**Status:** 🔨 Built – waiting for your checks.
+
 **Files:**
-- `backend/classifier.py`: `classify(message, history, strategies)` → dict; `parse_classifier_output(text, strategy_names)` (strips fences and `<think>`, extracts the first `{...}`, validates with pydantic, clamps values); one retry, then defaults
-- `backend/data/prompts/classifier.txt`: classifier prompt (spec 11.3, risk-high rule)
-- `backend/data/strategies_4.json`, `strategies_esconv8.json`: final review of descriptions and examples
-- `backend/mock.py`: adds `mock_classify(message)` keyword rules (spec 11.7)
-- `eval/test_messages.csv`: 30 synthetic messages: `id,message,expected_strategy` (balanced across the 4 strategies)
-- `scripts/eval_classifier.py`: prints accuracy and a per-strategy/confusion table; writes `exports/classifier_results.csv`
+- `backend/classifier.py`: `classify(message, history, strategies)` → `{strategy, emotion, intensity, stage, risk, confidence, rationale, source, latency_ms}`; `parse_classifier_output()` (removes thinking text and code fences, finds the first `{...}`, validates with pydantic, keeps values in range); `build_classifier_prompt()`; `fallback_result()`. Temperature 0, max 200 tokens, model `CLASSIFIER_MODEL`, one retry, then defaults.
+- `backend/data/prompts/classifier.txt`: the classifier prompt (strategy names + descriptions, choosing hints, emotion/stage/risk rules incl. "unsure → high", history, new message, JSON-only answer).
+- `backend/mock.py`: `mock_classify()` keyword rules (asks what to do → Advice; worry words → Reassurance; unclear or mixed → Reflection; else Validation), with fixed meta values. For the ESConv-8 set it uses the closest strategy name.
+- `eval/test_messages.csv`: 30 synthetic messages labelled for **strategies_4** (8 Validation, 7 Reflection, 8 Reassurance, 7 Advice).
+- `scripts/eval_classifier.py`: prints the accuracy, a per-strategy table (correct/expected, precision, recall), a confusion table, how often each strategy was predicted (preference-bias check) and how many fallbacks were used; writes `exports/classifier_results.csv`. Option `--limit N`.
+- Strategy files reviewed: no wording change needed (D-07).
+
+**What was done / deviations (D-41):**
+- The classifier is **not yet used in the chat**. Phase 7 wires it in, together with the second safety check (`risk == "high"`).
+- The whole classifier prompt is sent as **one user message** (not as a system message), so the model analyses it instead of chatting with it. Placeholders are filled with `.replace()` because the template contains JSON braces.
+- Risk values other than none/low/high (e.g. "medium") are treated as **high**: safety first, following the spec's "when unsure, choose high". If parsing fails completely, the spec's fallback (`risk: "none"`, "classifier unavailable") is used; the keyword check still protects that path.
+- **Automated verification (dev chat):** 13 odd-output cases for the parser (code fences, chatty text, `<think>`, lone `</think>`, out-of-range values, numbers as text, unknown names, missing fields, braces inside the rationale; no JSON, broken JSON and empty text all raise and trigger the retry); evaluation runs in mock mode (93%), against a fake model server (retry worked once; an always-broken answer fell back to the defaults and was reported; all 30 CSV rows valid), and with the ESConv-8 set (clear warning). **The mock score is not meaningful**, because the dev chat wrote both the mock rules and the test messages. Your model's score in check 1 is what counts.
 
 **Manual checks:**
 
-1. With a real key in `.env`:
+Before you start: `git pull origin claude/gracious-euler-tlrs89`. Terminal C (`ollama serve`) must be running, `.env` as in memory.md (`LLM_API_KEY=ollama`, `LLM_MODEL=qwen3:4b-instruct-2507-q4_K_M`, `STRATEGY_SET=strategies_4`). The server (Terminal A) does not need to run for this phase.
+
+1. In Terminal B:
    ```powershell
    python scripts/eval_classifier.py
    ```
-   **Expect:** progress lines, then `Accuracy: NN%`, a per-strategy table (precision/recall or correct/total) and a confusion table. The file `exports/classifier_results.csv` is created. (Without a key it runs the mock classifier and says so at the top.)
+   **Expect:** a header line naming your model, 30 progress lines (`expected=... predicted=... OK/X (llm, NNNms)`), then `Accuracy: NN/30 = NN%`, a per-strategy table, a confusion table, the predicted-strategy counts, and `Saved 30 rows to ...\exports\classifier_results.csv`. It takes about a minute on your GPU.
 2. Open `exports\classifier_results.csv` in Excel.
-   **Expect:** 30 rows. Every row has a valid strategy, emotion, intensity 1–5 and stage. No crash, even if the model returned odd output (the `raw_ok` column shows if a fallback was used).
-3. Look at the `predicted` column.
-   **Expect:** not all the same strategy. Tell me the accuracy and the distribution and I'll record them in this file.
+   **Expect:** 30 rows. Every row has a valid `predicted` strategy (one of the 4), an `emotion`, an `intensity` from 1 to 5 and a `stage`. The `source` column shows `llm` (or `fallback` if the model's answer was unusable, which the summary also reports). No crash.
+3. Look at "How often each strategy was predicted".
+   **Expect:** not all 30 the same (no `WARNING: every message got the same strategy`). **Tell me the accuracy line and these four counts**, and I'll record them here.
+4. (Extra) Mock mode, for comparison: set `LLM_API_KEY=` and run `python scripts/eval_classifier.py --limit 5`. **Expect:** the header says `MOCK classifier`, with 5 rows in well under a second. Set the key back afterwards.
+5. (Extra, optional) Pull the larger model (`ollama pull qwen3:8b`, ~5 GB on D:), run `$env:CLASSIFIER_MODEL="qwen3:8b"; python scripts/eval_classifier.py`, then `Remove-Item Env:CLASSIFIER_MODEL`. **Expect:** a second accuracy number to compare. (`qwen3:8b` is a hybrid model; `think:false` is sent automatically.)
 
 ---
 
@@ -548,6 +560,7 @@ Things the spec leaves open or gets slightly wrong. In each case I picked the si
 | D-38 | **Two model setups, same code.** Dev/testing (you): Ollama `qwen3:8b`, free (D-37). **Handoff (student and mentor): OpenRouter with credits**, default `LLM_MODEL=qwen/qwen3-14b` in `.env.example` and `config.py`. `docs/SETUP.md` (Phase 10) will default to OpenRouter with a spending limit and mention Ollama as a free alternative. For the Phase 9 evaluation the student uses one model consistently and names it in the report. | Spec 2 and 15: hosted API, no GPU needed on the student's laptop. `qwen/qwen3-8b` is gone from OpenRouter; `qwen3-14b` is the same family, cheap (about $0.12 / $0.24 per 1M tokens), and its thinking can be switched off. |
 | D-39 | **Thinking control, tested on your Ollama 0.40.14 (4 Nov 2026).** `ollama run --think=false` and the `/no_think` text were ignored by the `qwen3:4b` tag. Over the API, `think: false` moved the thinking into a separate `reasoning` field (reply clean, but still slow and token-hungry). `reasoning_effort: "none"` put the thinking **into** the reply, ending in `</think>` with no opening tag. **So:** (a) `llm.py` sends `{"think": false}` to Ollama URLs (`11434`/`ollama`), `{"reasoning": {"enabled": false}}` to OpenRouter, and nothing to other providers; (b) `strip_thinking()` also removes text before a lone `</think>`; (c) use a Qwen3 **instruct** tag on Ollama (`qwen3:4b-instruct-2507-q4_K_M`), because the plain `qwen3:4b` tag is an always-thinking build. | Prevents thinking text from reaching a user with any model, and avoids empty "Fallback reply" answers caused by thinking using up the 300-token limit. |
 | D-40 | Safety details: (a) normalisation as described in Phase 5 (apostrophes removed; look-alike digits swapped inside words only; `!` never swapped; separators between letters removed; stretched letters checked both ways); (b) Devanagari phrases match as plain text; (c) the crisis user message is stored with `used_strategy="Safety"` and the matched rule id in `meta_json`; (d) the PHQ item-9 notice now shows the helplines and the follow-up contact; (e) the session safety flag resets on New session or refresh. | (a)–(b) catch common spelling tricks without false negatives; (c) makes false alarms reviewable; (d) spec 11.5 / section 4 table; (e) spec 11.5 says "in this session". |
+| D-41 | Classifier details: the whole prompt goes as one **user** message; placeholders are filled with `.replace()`; temperature 0, max 200 tokens; one retry, then the spec's defaults; risk values other than none/low/high → **high**; strategy names matched case-insensitively (unknown → first in the file); history shown as `User:` / `Stillspace:` lines; `eval_classifier.py` adds the project folder to `sys.path` so `python scripts/eval_classifier.py` works; the test set is labelled for strategies_4 (the script warns otherwise); mock rules map to the closest ESConv-8 name. Wired into the chat in Phase 7. | Robust JSON from small models; safety-first on unclear risk; works with the exact command in the spec. |
 
 ---
 

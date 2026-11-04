@@ -11,9 +11,9 @@
 
 | Item | Value |
 |---|---|
-| Last completed phase | **Phase 4** – LLM client, mock mode, basic chat |
-| Current phase | **Phase 5 – Safety layer** (built, waiting for the developer's checks) |
-| Next phase | Phase 6 – Strategy classifier |
+| Last completed phase | **Phase 5** – Safety layer |
+| Current phase | **Phase 6 – Strategy classifier** (built, waiting for the developer's checks) |
+| Next phase | Phase 7 – Prompt builder and strategy-aware replies |
 | Branch | `claude/gracious-euler-tlrs89` (repo `harsh300604/stillspace`) |
 | Project folder (dev laptop) | `D:\CreatED-cloud\stillspace` |
 | Python | 3.11.9 (installed at `C:\Program Files\Python311`; venv and packages on D:) |
@@ -92,7 +92,7 @@ Mock mode: set `LLM_API_KEY=` (empty) and restart.
   5. Local models can be slow to start → `LLM_TIMEOUT_SECONDS` (D-36).
 - **Observation:** replies are a bit generic, which is expected with the plain prompt. Strategy instructions arrive in Phase 7.
 
-### Phase 5 – Safety layer (4 Nov 2026) 🔨 built, waiting for checks
+### Phase 5 – Safety layer (4 Nov 2026) ✅
 - **Built:** `backend/safety.py` (normalise → match → fixed reply), `crisis_keywords.json` (36 phrases + 13 patterns, each with an id), `prompts/crisis_response.txt`, `eval/safety_prompts.csv` (30 rows), the pipeline's step 1 in `routes/chat.py`, the "Safety response" styling, helplines in the PHQ item-9 notice, and the risk indicator after a safety reply.
 - **Design choice from the developer's Phase 2 suggestion:** safety never depends on the AI model. The keyword check runs first; on a match the AI is never called.
 - **Verified by the dev chat:** 30/30 rows (direct + browser, mock mode), crisis replies with a wrong key and with a model server (0 model calls for crisis messages), the follow-up contact shown, 25/25 extra unseen crisis phrasings caught, and Phase 3/4 regressions still green.
@@ -102,6 +102,13 @@ Mock mode: set `LLM_API_KEY=` (empty) and restart.
   - My test script choked on the CSV's Windows line endings (needed for Excel) → parse CSVs with a real CSV reader.
 - **Known false positive (kept on purpose):** "I love the movie suicide squad".
 - **Checks 1–7:** all passed in the dev chat's run on a fresh copy, at the developer's request (model server standing in for Ollama).
+
+### Phase 6 – Strategy classifier (4 Nov 2026) 🔨 built, waiting for checks
+- **Built:** `backend/classifier.py`, `prompts/classifier.txt`, `mock_classify()` in `mock.py`, `eval/test_messages.csv` (30 rows, balanced), `scripts/eval_classifier.py`.
+- **Design choice from the developer's Phase 2 suggestion:** prompt-based classification with Qwen first; a trained DistilBERT/DeBERTa classifier stays a stretch idea (D-21).
+- **Verified by the dev chat:** 13 parser edge cases; evaluation in mock mode, against a fake model (retry and fallback paths) and with the ESConv-8 warning. Not yet verified: the real model's accuracy (developer, check 1).
+- **Small fix:** the mock advice rule missed "tips" and "how should I" → more phrases added (mock score 80% → 93%; not a meaningful number, because the same person wrote the rules and the test set).
+- **Accuracy with the real model:** _to be filled in from the developer's check 1._
 
 ---
 
@@ -114,4 +121,5 @@ Mock mode: set `LLM_API_KEY=` (empty) and restart.
 5. **"Thinking" models** can make a chatbot slow or leak reasoning text. Use instruct models.
 6. **Background apps can hold ports or ignore settings** (the Ollama tray app). When something "is already in use", look for a running copy.
 7. **Mock mode is the safety net for teaching.** Every session can run with no internet and no key.
+9. **A score is only as honest as its test set.** The mock classifier scores 93% because the same person wrote the rules and the test messages. Ask the student who wrote the labels, and whether the model has seen similar examples.
 8. **Safety changes need a test set.** Every change to `crisis_keywords.json` or `safety.py` should be followed by the 30-row check (`30 rows, 0 mismatches`). Never add an exception for a false positive if it could hide a real crisis.

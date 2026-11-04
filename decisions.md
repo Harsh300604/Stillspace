@@ -134,7 +134,27 @@ Each entry has:
 
 ---
 
-## 7. Scope decisions
+## 7. The strategy classifier (Phase 6)
+
+### Prompt-based classifier (D-21, D-41)
+- **Decision:** one AI call (temperature 0) reads the new message plus recent history and answers with JSON: strategy, emotion, intensity, stage, risk, confidence, rationale. The prompt lives in `prompts/classifier.txt`.
+- **Why:** spec 11.3, and the developer's suggestion to start with prompt-based classification.
+- **Alternatives:** a trained DistilBERT/DeBERTa classifier (a stretch idea: needs labelled data such as ESConv, plus training time); keyword rules only (that is the mock classifier: fine offline, but shallow).
+
+### Never trust the model's JSON (D-41)
+- **Decision:** the parser removes thinking text and code fences, takes the first `{...}`, keeps numbers in range, maps unknown names to safe defaults and validates the result with pydantic. If that fails: one retry, then fixed defaults (`classifier unavailable`).
+- **Why:** small local models often add chatty text or slightly wrong values. The chat must never crash because of a badly formatted answer.
+- **Safety detail:** a risk value the code doesn't recognise (e.g. "medium") is treated as **high**. The spec says "when unsure between low and high, choose high".
+- **Teaching note:** Session 7 can show the 13 messy answers the parser was tested with (code fences, `<think>`, "intensity": 9 …), a nice lesson in defensive programming.
+
+### Measuring it honestly
+- `scripts/eval_classifier.py` prints accuracy, per-strategy precision/recall, a confusion table and the **preference-bias check** (how often each strategy is predicted).
+- The 30 test messages are synthetic and labelled for the 4-strategy set.
+- **Teaching note:** the mock classifier scores 93% only because the same person wrote the rules and the test messages. A good discussion of overfitting and test-set honesty (Session 8).
+
+---
+
+## 8. Scope decisions
 
 - **Classifier (D-21):** prompt-based with Qwen. A trained DistilBERT/DeBERTa classifier is a documented **stretch idea only** (spec section 3 puts it out of scope; 30 test messages are too few to train on; the ESConv dataset would be the source).
 - **Extra checks (D-19):** some phases have extra checks marked "(Extra)". All the spec's checks are kept.
@@ -142,9 +162,10 @@ Each entry has:
 
 ---
 
-## 8. Changelog of this file
+## 9. Changelog of this file
 
 | Date | Phase | Change |
 |---|---|---|
 | 4 Nov 2026 | after Phase 4 | File created; covers D-01 to D-39 |
 | 4 Nov 2026 | Phase 5 | Safety section updated (D-40) |
+| 4 Nov 2026 | Phase 6 | Classifier section added (D-41) |
