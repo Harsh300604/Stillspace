@@ -22,11 +22,11 @@ Around the chat there are check-ins (setup, daily mood, PHQ-9 every 14 days, pos
 
 **Stack (spec section 6):** Python 3.10+, FastAPI + uvicorn, pydantic v2, `openai` SDK, python-dotenv, `sqlite3`, plain HTML/CSS/JS. No ORM, no npm, no extra frameworks.
 
-**Storage (spec section 6.1):** everything lives on **D:**: the project (`D:\Projects\stillspace`), `.venv`, pip cache, temp files, HF/Ollama caches, the DB and exports. The code only uses paths relative to the project root (`pathlib`), never hard-coded drive letters.
+**Storage (spec section 6.1):** everything lives on **D:**: the project (`D:\CreatED-cloud\stillspace`), `.venv`, pip cache, temp files, HF/Ollama caches, the DB and exports. The code only uses paths relative to the project root (`pathlib`), never hard-coded drive letters.
 
 ### How to use the checklists
 
-- Commands are **PowerShell**, run from `D:\Projects\stillspace` with the venv active (prompt starts with `(.venv)`), unless a step says otherwise.
+- Commands are **PowerShell**, run from `D:\CreatED-cloud\stillspace` with the venv active (prompt starts with `(.venv)`), unless a step says otherwise.
 - "Terminal A" runs the server (`uvicorn backend.main:app --reload`) and stays open. "Terminal B" is a second PowerShell window (activate the venv there too) for other commands.
 - To inspect the database without DB Browser, a `python -c "..."` one-liner is given where useful.
 - Report back with the check numbers and pass/fail, plus any error text.
@@ -99,7 +99,7 @@ The API key is **never** included.
 1. **D: drive setup (spec 6.1).** In PowerShell (any folder):
    ```powershell
    Get-PSDrive C        # write down the "Free" value
-   mkdir D:\Projects, D:\cache\pip, D:\cache\tmp, D:\cache\hf, D:\ollama\models
+   mkdir D:\cache\pip, D:\cache\tmp, D:\cache\hf, D:\ollama\models
    setx PIP_CACHE_DIR D:\cache\pip
    setx HF_HOME D:\cache\hf
    setx OLLAMA_MODELS D:\ollama\models
@@ -113,8 +113,8 @@ The API key is **never** included.
 
 2. **Project, venv and install on D:.**
    ```powershell
-   git clone https://github.com/harsh300604/stillspace.git D:\Projects\stillspace
-   cd D:\Projects\stillspace
+   git clone https://github.com/harsh300604/stillspace.git D:\CreatED-cloud\stillspace
+   cd D:\CreatED-cloud\stillspace
    git checkout claude/gracious-euler-tlrs89
    $env:TMP="D:\cache\tmp"; $env:TEMP="D:\cache\tmp"
    python -m venv .venv
@@ -124,14 +124,14 @@ The API key is **never** included.
    Get-PSDrive C
    ```
    (If you already cloned, skip the clone and run `git pull origin claude/gracious-euler-tlrs89`. If `Activate.ps1` is blocked, run `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` once and retry.)
-   **Expect:** the prompt shows `(.venv)`. `sys.prefix` prints `D:\Projects\stillspace\.venv`. pip ends with `Successfully installed ...` and no red errors. C: free space is about the same as in check 1 (a few MB difference is normal).
+   **Expect:** the prompt shows `(.venv)`. `sys.prefix` prints `D:\CreatED-cloud\stillspace\.venv`. pip ends with `Successfully installed ...` and no red errors. C: free space is about the same as in check 1 (a few MB difference is normal).
 
-3. **Run the server.** In Terminal A (venv active, in `D:\Projects\stillspace`):
+3. **Run the server.** In Terminal A (venv active, in `D:\CreatED-cloud\stillspace`):
    ```powershell
    Copy-Item .env.example .env
    uvicorn backend.main:app --reload
    ```
-   **Expect:** `[startup] Stillspace 0.1.0 | strategies=strategies_4 | mock_mode=True | demo_mode=True | db=D:\Projects\stillspace\data\stillspace.db`, then `Uvicorn running on http://127.0.0.1:8000` and `Application startup complete.` No tracebacks. Opening http://localhost:8000 shows the placeholder page "Stillspace backend is running".
+   **Expect:** `[startup] Stillspace 0.1.0 | strategies=strategies_4 | mock_mode=True | demo_mode=True | db=D:\CreatED-cloud\stillspace\data\stillspace.db`, then `Uvicorn running on http://127.0.0.1:8000` and `Application startup complete.` No tracebacks. Opening http://localhost:8000 shows the placeholder page "Stillspace backend is running".
 
 4. **Config endpoint.** Open http://localhost:8000/api/config in the browser (or in Terminal B: `Invoke-RestMethod http://localhost:8000/api/config | ConvertTo-Json -Depth 5`).
    **Expect:** JSON with `"strategy_set": "strategies_4"`, a `strategies` list of exactly **4** (Validation, Reflection, Reassurance, Advice), each with a `description`, `"mock_mode": true`, `"demo_mode": true`, and helplines with 14416 and 112. No `api_key` field anywhere.
@@ -197,7 +197,7 @@ The API key is **never** included.
    **Expect:** the follow-up notice from the mockup appears with the helplines, and the right-rail risk indicator says **"Follow-up needed"**.
 5. Click "Switch participant", then log in again as `P001`.
    **Expect:** nothing is due, so you go straight to chat. Click **"Next day"**: daily shows Due. Click **"14 days later"**: fortnightly shows Due.
-6. Open `D:\Projects\stillspace\data\stillspace.db` in DB Browser for SQLite (install it to D:, or use the portable version) → Browse Data.
+6. Open `D:\CreatED-cloud\stillspace\data\stillspace.db` in DB Browser for SQLite (install it to D:, or use the portable version) → Browse Data.
    **Expect:** `participants` has a P001 row (`setup_done=1`, `demo_day_offset` > 0). `checkins` has setup, daily and fortnightly rows, with unanswered questions missing from `answers_json` (not stored as 0) and `item9_flag=1` on the last PHQ.
 7. (Extra) Set `DEMO_MODE=false`, restart, reload. **Expect:** the preview-day buttons are hidden, and `Invoke-RestMethod -Method Post http://localhost:8000/api/demo/advance -ContentType application/json -Body '{"code":"P001","days":1}'` returns a 404 error. Set it back to `true`.
 
@@ -370,11 +370,11 @@ The API key is **never** included.
 
 **Manual checks:**
 
-1. Clone the repo into a fresh folder (e.g. `D:\Projects\stillspace-test`) and follow `docs/SETUP.md` exactly, as if you were the student (on your laptop, keep the D: rule from Phase 1).
+1. Clone the repo into a fresh folder (e.g. `D:\CreatED-cloud\stillspace-test`) and follow `docs/SETUP.md` exactly, as if you were the student (on your laptop, keep the D: rule from Phase 1).
    **Expect:** the app works end to end in mock mode.
 2. Read `mentoring.md`.
    **Expect:** all 16 sessions have every part from spec 15.1, and every file and function it names exists.
-3. Copy `student_starter/` to `D:\Projects\starter-try` and do the student tasks of **sessions 4 and 7** exactly as written.
+3. Copy `student_starter/` to `D:\CreatED-cloud\starter-try` and do the student tasks of **sessions 4 and 7** exactly as written.
    **Expect:** their "done when" checks pass.
 4. In `student_starter/` (its own venv or the same one):
    ```powershell
@@ -411,7 +411,7 @@ Things the spec leaves open or gets slightly wrong. In each case I picked the si
 | ID | Decision | Why |
 |---|---|---|
 | D-01 | The venv activation command is `.\.venv\Scripts\Activate.ps1` (the spec shows `.\\venv\...`, a typo). | The spec creates the venv as `.venv`. |
-| D-02 | The project gets onto D: with `git clone ... D:\Projects\stillspace` and then checking out branch `claude/gracious-euler-tlrs89`. | The spec runs `cd D:\Projects\stillspace` without saying how the folder is created. |
+| D-02 | The project gets onto D: with `git clone ... D:\CreatED-cloud\stillspace` and then checking out branch `claude/gracious-euler-tlrs89`. | The spec runs `cd D:\CreatED-cloud\stillspace` without saying how the folder is created. |
 | D-03 | `$env:TMP`/`$env:TEMP` are set per terminal (as the spec shows) **before** `python -m venv`, so venv creation also uses D:. | Keeps temp files off C: during install. |
 | D-04 | **Approved:** add `tzdata` to `requirements.txt` (a sixth package, about 350 KB, maintained by the Python core team). | On Windows, Python has no built-in timezone database, so `ZoneInfo("Asia/Kolkata")` crashes without it. The spec says "only" 5 packages, but `APP_TIMEZONE` can't work on Windows without this. The alternative is a hard-coded +05:30 offset, which would ignore `APP_TIMEZONE`. |
 | D-05 | Empty `backend/__init__.py` and `backend/routes/__init__.py` are added. | So `uvicorn backend.main:app` and `from backend.safety import ...` work the same on every OS. |
@@ -429,6 +429,7 @@ Things the spec leaves open or gets slightly wrong. In each case I picked the si
 | D-17 | Export CSVs and eval CSVs are written as UTF-8 with BOM (`utf-8-sig`). | Excel on Windows otherwise garbles non-ASCII characters (e.g. Hinglish, curly quotes). |
 | D-18 | The mockup is also kept as `docs/mockup/Stillspace-2.html` (unchanged). | Needed for the Phase 2 side-by-side check and the final "design matches" acceptance check. |
 | D-19 | Extra checks marked "(Extra)" or "(Quick extra check)" are added to some phases. The spec's numbered checks are all kept. | Faster verification. You can skip them. |
+| D-20 | The project folder is `D:\CreatED-cloud\stillspace`, not `D:\Projects\stillspace` (your choice). Caches stay in `D:\cache\...` and `D:\ollama\models`. | Still on D:. The code only uses paths relative to the project root, so nothing else changes. |
 
 ---
 
