@@ -1,0 +1,434 @@
+# Stillspace – Implementation Plan
+
+> Source of truth: `Stillspace_Build_Specification.docx` (v1.1, 4 Nov 2026).
+> This file follows section 14 of the spec. The dev chat writes code; **the developer runs every check**.
+> The dev chat stops after Phase 0 (this file) and after every phase.
+
+---
+
+## 1. Overview
+
+Stillspace is a local web chat app (research prototype, not therapy). For each user message the backend:
+
+1. runs a **keyword safety check** (no LLM; crisis → fixed reply with Tele-MANAS 14416 / 112),
+2. asks an LLM **classifier** for `{strategy, emotion, intensity, stage, risk, confidence, rationale}`,
+3. runs a **second safety check** (`risk == "high"` → fixed reply),
+4. picks the **used strategy** (safety wins, then the user's request, then the classifier),
+5. **builds a prompt** (system text + strategy instruction + meta details + check-in context + history),
+6. calls a **Qwen** model through an OpenAI-compatible API (or **mock mode** with no key),
+7. **logs** everything to SQLite.
+
+Around the chat there are check-ins (setup, daily mood, PHQ-9 every 14 days, post-session reflection), a session summary, CSV export and evaluation scripts. The frontend is the mentor's mockup `Stillspace-2.html`, split into 3 files and wired to the API. Only the changes listed in spec section 12 are made to it.
+
+**Stack (spec section 6):** Python 3.10+, FastAPI + uvicorn, pydantic v2, `openai` SDK, python-dotenv, `sqlite3`, plain HTML/CSS/JS. No ORM, no npm, no extra frameworks.
+
+**Storage (spec section 6.1):** everything lives on **D:**: the project (`D:\Projects\stillspace`), `.venv`, pip cache, temp files, HF/Ollama caches, the DB and exports. The code only uses paths relative to the project root (`pathlib`), never hard-coded drive letters.
+
+### How to use the checklists
+
+- Commands are **PowerShell**, run from `D:\Projects\stillspace` with the venv active (prompt starts with `(.venv)`), unless a step says otherwise.
+- "Terminal A" runs the server (`uvicorn backend.main:app --reload`) and stays open. "Terminal B" is a second PowerShell window (activate the venv there too) for other commands.
+- To inspect the database without DB Browser, a `python -c "..."` one-liner is given where useful.
+- Report back with the check numbers and pass/fail, plus any error text.
+
+---
+
+## 2. Phase table
+
+| Phase | Goal | Main files created / changed | Status |
+|---|---|---|---|
+| 0 | Write this plan | `implementation.md` | ✅ Done (awaiting approval) |
+| 1 | Skeleton and config, D: drive setup | folders, `requirements.txt`, `.env.example`, `.gitignore`, `backend/config.py`, `backend/main.py`, `backend/routes/config_route.py`, `backend/data/strategies_4.json`, `backend/data/strategies_esconv8.json`, placeholder `frontend/index.html` | ⬜ Not started |
+| 2 | Frontend port | `frontend/index.html`, `frontend/styles.css`, `frontend/app.js`, `docs/mockup/Stillspace-2.html` (reference copy) | ⬜ Not started |
+| 3 | Database, participants, check-ins | `backend/db.py`, `backend/checkins.py`, `backend/routes/participants.py`, `backend/routes/checkins.py`, demo endpoint, `backend/main.py`, `frontend/app.js` | ⬜ Not started |
+| 4 | LLM client, mock mode, basic chat | `backend/llm.py`, `backend/mock.py`, `backend/routes/chat.py`, `backend/data/prompts/plain_system.txt`, `frontend/app.js` | ⬜ Not started |
+| 5 | Safety layer | `backend/safety.py`, `backend/data/crisis_keywords.json`, `backend/data/prompts/crisis_response.txt`, `eval/safety_prompts.csv`, `backend/routes/chat.py`, `backend/routes/checkins.py`, `frontend/app.js`, `frontend/styles.css` (safety badge only) | ⬜ Not started |
+| 6 | Strategy classifier | `backend/classifier.py`, `backend/data/prompts/classifier.txt`, strategy JSON review, `backend/mock.py`, `eval/test_messages.csv`, `scripts/eval_classifier.py` | ⬜ Not started |
+| 7 | Prompt builder and strategy-aware replies | `backend/prompt_builder.py`, `backend/strategy_policy.py`, `backend/data/prompts/system.txt`, `backend/routes/chat.py`, `frontend/app.js` | ⬜ Not started |
+| 8 | Reflection, summary, export | `backend/routes/chat.py` (end + summary), `frontend/app.js`, `scripts/export_data.py` | ⬜ Not started |
+| 9 | Evaluation kit | `scripts/eval_responses.py` | ⬜ Not started |
+| 10 | Handover docs, student starter, mentoring.md | `README.md`, `docs/SETUP.md`, `docs/ARCHITECTURE.md`, `docs/SAFETY.md`, `docs/TROUBLESHOOTING.md`, `student_starter/`, `mentoring.md` | ⬜ Not started |
+
+Status key: ⬜ not started · 🔨 built, waiting for your checks · ✅ checks passed
+
+---
+
+## 3. Phases in detail
+
+### Phase 1: Skeleton and config
+
+**Goal:** a runnable FastAPI app on D: that serves a placeholder page and `GET /api/config`, with every setting read from `.env`.
+
+**Files:**
+- `requirements.txt`: fastapi, uvicorn[standard], pydantic, openai, python-dotenv (pinned to their current major versions; see Decisions log D-04 about `tzdata`)
+- `.env.example`: every key from spec section 8 with its default and a one-line comment
+- `.gitignore`: `.env`, `.venv/`, `data/*.db`, `exports/`, `__pycache__/`
+- `backend/__init__.py`, `backend/routes/__init__.py`: empty, so `uvicorn backend.main:app` imports cleanly
+- `backend/config.py`: loads `.env`, exposes plain module-level settings, `is_mock_mode()`, `load_strategies()`, `HELPLINES`, `APP_VERSION`
+- `backend/main.py`: creates the app, includes routes, serves `frontend/index.html` at `/` and `frontend/` at `/static`
+- `backend/routes/config_route.py`: `GET /api/config`
+- `backend/data/strategies_4.json` (spec section 11.1) and `backend/data/strategies_esconv8.json` (8 ESConv strategies)
+- `frontend/index.html`: temporary placeholder page (replaced in Phase 2)
+- Empty folders kept with `.gitkeep`: `data/`, `eval/`, `scripts/`, `docs/`, `backend/data/prompts/`
+
+**`GET /api/config` response shape:**
+```json
+{
+  "app_version": "0.1.0",
+  "strategy_set": "strategies_4",
+  "strategies": [{"name": "Validation", "description": "..."}, "..."],
+  "helplines": [{"name": "Tele-MANAS", "number": "14416", "alt": "1-800-891-4416", "note": "free, 24x7"},
+                {"name": "Emergency", "number": "112"}],
+  "mock_mode": true,
+  "demo_mode": true,
+  "followup_contact": ""
+}
+```
+The API key is **never** included.
+
+**Manual checks:**
+
+1. **D: drive setup (spec 6.1).** In PowerShell (any folder):
+   ```powershell
+   Get-PSDrive C        # write down the "Free" value
+   mkdir D:\Projects, D:\cache\pip, D:\cache\tmp, D:\cache\hf, D:\ollama\models
+   setx PIP_CACHE_DIR D:\cache\pip
+   setx HF_HOME D:\cache\hf
+   setx OLLAMA_MODELS D:\ollama\models
+   ```
+   ("already exists" errors from `mkdir` are fine.) **Close the terminal and open a NEW one**, then:
+   ```powershell
+   pip cache dir
+   echo $env:PIP_CACHE_DIR
+   ```
+   **Expect:** both print `D:\cache\pip`.
+
+2. **Project, venv and install on D:.**
+   ```powershell
+   git clone https://github.com/harsh300604/stillspace.git D:\Projects\stillspace
+   cd D:\Projects\stillspace
+   git checkout claude/gracious-euler-tlrs89
+   $env:TMP="D:\cache\tmp"; $env:TEMP="D:\cache\tmp"
+   python -m venv .venv
+   .\.venv\Scripts\Activate.ps1
+   python -c "import sys; print(sys.prefix)"
+   pip install -r requirements.txt
+   Get-PSDrive C
+   ```
+   (If you already cloned, skip the clone and run `git pull origin claude/gracious-euler-tlrs89`. If `Activate.ps1` is blocked, run `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` once and retry.)
+   **Expect:** the prompt shows `(.venv)`. `sys.prefix` prints `D:\Projects\stillspace\.venv`. pip ends with `Successfully installed ...` and no red errors. C: free space is about the same as in check 1 (a few MB difference is normal).
+
+3. **Run the server.** In Terminal A (venv active, in `D:\Projects\stillspace`):
+   ```powershell
+   Copy-Item .env.example .env
+   uvicorn backend.main:app --reload
+   ```
+   **Expect:** `Uvicorn running on http://127.0.0.1:8000` and `Application startup complete.` No tracebacks. Opening http://localhost:8000 shows the placeholder page "Stillspace backend is running".
+
+4. **Config endpoint.** Open http://localhost:8000/api/config in the browser (or in Terminal B: `Invoke-RestMethod http://localhost:8000/api/config | ConvertTo-Json -Depth 5`).
+   **Expect:** JSON with `"strategy_set": "strategies_4"`, a `strategies` list of exactly **4** (Validation, Reflection, Reassurance, Advice), each with a `description`, `"mock_mode": true`, `"demo_mode": true`, and helplines with 14416 and 112. No `api_key` field anywhere.
+
+5. **Switch strategy set.** In `.env` set `STRATEGY_SET=strategies_esconv8`, save, then stop the server (Ctrl+C) and start it again. Reload `/api/config`.
+   **Expect:** **8** strategies (Question, Restatement or Paraphrasing, Reflection of Feelings, Self-Disclosure, Affirmation and Reassurance, Providing Suggestions, Information, Others). Set it back to `strategies_4` and restart: 4 again.
+
+---
+
+### Phase 2: Frontend port
+
+**Goal:** the mockup served by FastAPI, looking identical, with only the section 12 changes that don't need a database yet.
+
+**Prerequisite:** `Stillspace-2.html` must be in the repo (see Known issues K-01).
+
+**Files:**
+- `frontend/index.html`: markup from the mockup; links `/static/styles.css` and `/static/app.js`
+- `frontend/styles.css`: the mockup CSS, unchanged (plus the "Mock mode" tag in Phase 4 and the safety badge style in Phase 5)
+- `frontend/app.js`: the mockup JS plus the `api(path, options)` helper; strategy lists built from `/api/config`; participant-code validation; consent routing stubbed (always goes to setup until Phase 3)
+- `docs/mockup/Stillspace-2.html`: untouched reference copy for side-by-side comparison
+- Wording changes: text claiming "nothing is stored", "no AI is connected" or "scripted replies" is replaced with the accurate text from spec section 12, and the footer disclaimer from spec section 16 appears on every step
+
+**Manual checks:**
+
+1. Server running. Open http://localhost:8000 in one tab and `docs/mockup/Stillspace-2.html` (double-click it) in another.
+   **Expect:** same colours, fonts, sidebar steps and right panel.
+2. Toggle dark mode, press A+ and A−, then narrow the window below 700 px.
+   **Expect:** all behave exactly like the mockup, and the mobile layout appears.
+3. On the consent step try Continue (a) with nothing, (b) box ticked but no code, (c) code `ab` (too short), (d) code `P 01!` (invalid characters), (e) box ticked and code `P001`.
+   **Expect:** (a)–(d) are blocked with a visible message; only (e) continues.
+4. In Terminal B:
+   ```powershell
+   Select-String -Path frontend\* -Pattern "scripted","nothing is stored","not stored","no AI" -SimpleMatch
+   ```
+   **Expect:** no output. The footer disclaimer "Student research prototype. Not therapy, diagnosis or an emergency service. In an emergency call 112 or Tele-MANAS 14416." is visible on every step.
+5. (Extra) Press F12 → Console. **Expect:** no red errors. The strategy dropdowns list the 4 strategies from `/api/config` (switch to esconv8 and reload: 8 appear).
+
+---
+
+### Phase 3: Database, participants, check-ins
+
+**Goal:** participants, scheduling and check-ins are saved in SQLite, with PHQ-9 scored on the server and the frontend routing by status.
+
+**Files:**
+- `backend/db.py`: `get_connection()`, `create_tables()` (spec section 9, `CREATE TABLE IF NOT EXISTS`), small query helpers
+- `backend/checkins.py`: `score_phq9(answers)`, `phq_band(total)`, `local_today(participant)`, `due_status(participant)`
+- `backend/routes/participants.py`: `POST /api/participants`, `GET /api/participants/{code}/status`, `PATCH /api/participants/{code}`, `POST /api/demo/advance` (404 unless `DEMO_MODE=true`)
+- `backend/routes/checkins.py`: `POST /api/checkins` (setup / daily upsert / fortnightly / post_session)
+- `backend/main.py`: creates tables on startup, includes the new routers
+- `frontend/app.js`: consent → `POST /api/participants` → route to setup / daily / fortnightly / chat; code kept in `sessionStorage` (try/catch); "Finish/Save" buttons call `POST /api/checkins`; tab Due/Done labels from `/status`; sidebar mood buttons save the daily check-in; preview-day buttons call `/api/demo/advance`; "Switch participant" link
+
+**Manual checks:**
+
+1. Open http://localhost:8000, tick consent, enter `P001`.
+   **Expect:** you land on the **setup** tab. Complete it → you move to **daily**; complete daily → **fortnightly**.
+2. On PHQ-9 answer every item with value **1** ("Several days") and save.
+   **Expect:** the score shows **9 – mild**. Press F5: you are still logged in as P001, and the PHQ answers and the tabs' Done status are kept.
+3. Click "14 days later" (demo) so PHQ-9 is due again. Leave **one item unanswered** and save. Then in Terminal B:
+   ```powershell
+   python -c "import sqlite3; c=sqlite3.connect('data/stillspace.db'); print(c.execute(\"select id, phq_total, phq_band, phq_complete from checkins where type='fortnightly' order by id desc limit 1\").fetchone())"
+   ```
+   **Expect:** the UI shows no total. The row prints like `(5, None, None, 0)`.
+4. Make PHQ-9 due again ("14 days later"), answer all items, with item 9 = **1**, and save.
+   **Expect:** the follow-up notice from the mockup appears with the helplines, and the right-rail risk indicator says **"Follow-up needed"**.
+5. Click "Switch participant", then log in again as `P001`.
+   **Expect:** nothing is due, so you go straight to chat. Click **"Next day"**: daily shows Due. Click **"14 days later"**: fortnightly shows Due.
+6. Open `D:\Projects\stillspace\data\stillspace.db` in DB Browser for SQLite (install it to D:, or use the portable version) → Browse Data.
+   **Expect:** `participants` has a P001 row (`setup_done=1`, `demo_day_offset` > 0). `checkins` has setup, daily and fortnightly rows, with unanswered questions missing from `answers_json` (not stored as 0) and `item9_flag=1` on the last PHQ.
+7. (Extra) Set `DEMO_MODE=false`, restart, reload. **Expect:** the preview-day buttons are hidden, and `Invoke-RestMethod -Method Post http://localhost:8000/api/demo/advance -ContentType application/json -Body '{"code":"P001","days":1}'` returns a 404 error. Set it back to `true`.
+
+---
+
+### Phase 4: LLM client, mock mode, basic chat
+
+**Goal:** chat works end to end with a plain (strategy-free) prompt, in mock mode and with a real key, with friendly errors.
+
+**Files:**
+- `backend/llm.py`: `chat_completion(messages, temperature, max_tokens, model)` → `(text, model, latency_ms)`; strips `<think>…</think>`; disables thinking where the provider supports it
+- `backend/mock.py`: `mock_reply(strategy)` with the mockup's canned replies (reworded) and about 600 ms simulated latency; `mock_classify()` is added in Phase 6
+- `backend/data/prompts/plain_system.txt`: a short plain system prompt (reused as condition A in Phase 9)
+- `backend/routes/chat.py`: `POST /api/sessions`, `POST /api/chat` (history = last `HISTORY_TURNS` messages, logs both messages)
+- `frontend/app.js`: creates a session on first entry to chat, `send()` → `/api/chat`, typing indicator, send disabled while waiting, friendly error with Retry button, "Mock mode" tag
+
+**Manual checks:**
+
+1. `.env` has no `LLM_API_KEY`. Restart, go to chat, send "I had a long day".
+   **Expect:** a reply in about 0.6 s, and a small **"Mock mode"** tag visible. Terminal A logs a line like `[chat] source=mock 601ms`.
+2. Put a real OpenRouter key in `.env` (`LLM_API_KEY=sk-or-...`), restart, send three messages that refer back to each other.
+   **Expect:** no Mock mode tag. Replies are coherent, 2–5 sentences, contain no `<think>` text, and remember the earlier messages.
+3. Change the key to `sk-or-wrong`, restart, send a message.
+   **Expect:** the chat shows a friendly error with a **Retry** button (no stack trace). Terminal A shows the real error (e.g. `AuthenticationError ... 401`).
+4. In Terminal B:
+   ```powershell
+   python -c "import sqlite3; c=sqlite3.connect('data/stillspace.db'); [print(r) for r in c.execute('select id, role, source, model, latency_ms from messages order by id desc limit 6')]"
+   ```
+   **Expect:** user and assistant rows. Assistant rows have `source` = `mock`, `llm` or `fallback`, and `latency_ms` filled.
+
+---
+
+### Phase 5: Safety layer
+
+**Goal:** deterministic crisis detection that works in every mode, with the fixed crisis reply, the safety badge, the PHQ item-9 rule in `safety.py`, and the risk indicator.
+
+**Files:**
+- `backend/safety.py`: `check_message(text)`, `crisis_response()`, `phq_item9_flag(answers)`, `HELPLINES`
+- `backend/data/crisis_keywords.json`: phrases and regexes (English plus common Hinglish), matched on word boundaries
+- `backend/data/prompts/crisis_response.txt`: fixed text with Tele-MANAS 14416 / 1-800-891-4416 and 112; mentions `FOLLOWUP_CONTACT` if set
+- `eval/safety_prompts.csv`: 15 synthetic, non-graphic rows: `id,message,expect` (`crisis` / `normal`)
+- `backend/routes/chat.py`: safety check before any LLM call; safety replies logged with `source="safety"`
+- `backend/routes/checkins.py`: uses `safety.phq_item9_flag`
+- `frontend/app.js` + `frontend/styles.css`: "Safety response" badge with distinct styling and helpline numbers; risk indicator rule from spec 11.5
+
+**Manual checks:**
+
+1. Open `eval/safety_prompts.csv`. Send each row with `expect=crisis` in chat.
+   **Expect:** every one gets the same fixed crisis text containing **14416** and **112**, and the badge **"Safety response"** in its distinct style.
+2. Send each row with `expect=normal` (e.g. "this exam is killing me").
+   **Expect:** normal replies, not crisis responses. Write down any false positives for the Known issues section.
+3. (Quick extra check, no server needed) In Terminal B:
+   ```powershell
+   python -c "import csv; from backend.safety import check_message; [print(r['expect'], check_message(r['message']), r['message']) for r in csv.DictReader(open('eval/safety_prompts.csv', encoding='utf-8'))]"
+   ```
+   **Expect:** every `crisis` row prints `True` and every `normal` row prints `False`.
+4. Repeat two crisis messages (a) in mock mode (no key) and (b) with the wrong key `sk-or-wrong`.
+   **Expect:** the crisis response still appears both times. Terminal A shows `safety=keyword` and no LLM call.
+5. After a safety reply, look at the right rail.
+   **Expect:** the risk indicator shows **"Follow-up needed"**. Start a new session as a participant with no flags: it shows "Not assessed". It never shows a percentage.
+
+---
+
+### Phase 6: Strategy classifier
+
+**Goal:** a robust classifier returning valid JSON every time (real or mock), plus an evaluation script.
+
+**Files:**
+- `backend/classifier.py`: `classify(message, history, strategies)` → dict; `parse_classifier_output(text, strategy_names)` (strips fences and `<think>`, extracts the first `{...}`, validates with pydantic, clamps values); one retry, then defaults
+- `backend/data/prompts/classifier.txt`: classifier prompt (spec 11.3, risk-high rule)
+- `backend/data/strategies_4.json`, `strategies_esconv8.json`: final review of descriptions and examples
+- `backend/mock.py`: adds `mock_classify(message)` keyword rules (spec 11.7)
+- `eval/test_messages.csv`: 30 synthetic messages: `id,message,expected_strategy` (balanced across the 4 strategies)
+- `scripts/eval_classifier.py`: prints accuracy and a per-strategy/confusion table; writes `exports/classifier_results.csv`
+
+**Manual checks:**
+
+1. With a real key in `.env`:
+   ```powershell
+   python scripts/eval_classifier.py
+   ```
+   **Expect:** progress lines, then `Accuracy: NN%`, a per-strategy table (precision/recall or correct/total) and a confusion table. The file `exports/classifier_results.csv` is created. (Without a key it runs the mock classifier and says so at the top.)
+2. Open `exports\classifier_results.csv` in Excel.
+   **Expect:** 30 rows. Every row has a valid strategy, emotion, intensity 1–5 and stage. No crash, even if the model returned odd output (the `raw_ok` column shows if a fallback was used).
+3. Look at the `predicted` column.
+   **Expect:** not all the same strategy. Tell me the accuracy and the distribution and I'll record them in this file.
+
+---
+
+### Phase 7: Prompt builder and strategy-aware replies
+
+**Goal:** the full pipeline from spec section 5, an explainability panel, and a saved preference.
+
+**Files:**
+- `backend/strategy_policy.py`: `choose_strategy(requested, classified, safety_flag, strategy_names)` (spec 11.2)
+- `backend/prompt_builder.py`: `build_messages(strategy, meta, checkin_context, history, message)` → `[system, ...history, user]`; `checkin_lines(...)` (mood and PHQ band only)
+- `backend/data/prompts/system.txt`: spec 11.4 text with placeholders
+- `backend/routes/chat.py`: full pipeline (keyword safety → classify → classifier-risk safety → policy → build → LLM → log); console log `[chat] strategy=… emotion=… safety=… NNNNms`; a commented-out `# DEBUG:` print of the system prompt for check 4
+- `frontend/app.js`: assistant badge shows the used strategy; side panel shows "Currently used by model" plus emotion / intensity / stage; "Requested by you" PATCHes the preference
+
+**Manual checks:**
+
+1. Requested = **Automatic**. Send "I don't know why I feel off today".
+   **Expect:** the side panel shows a used strategy (likely **Reflection**) and, below it in small text, emotion, intensity and stage. The badge on the reply shows the same strategy.
+2. Set "Requested by you" to **Advice** and send "I can't focus on studying".
+   **Expect:** used strategy = **Advice**, and the reply suggests one or two small concrete steps.
+3. Press F5. **Expect:** "Requested by you" is still **Advice**. Set it back to **Automatic**.
+4. In `backend/routes/chat.py` remove the `#` in front of the line marked `# DEBUG: print system prompt`, save (auto-reload), and send a message.
+   **Expect:** Terminal A prints the system prompt, which contains "Support strategy for this reply", the strategy's instruction, "Mood today: …" and "Recent wellbeing questionnaire: … range". No date of birth and no individual PHQ answers. Put the `#` back.
+5. Send the same message ("My friends have been ignoring me") once with each of the 4 strategies selected.
+   **Expect:** the four replies read noticeably differently (Validation names the feeling, Reflection paraphrases and asks, Reassurance offers perspective, Advice gives steps).
+
+---
+
+### Phase 8: Reflection, summary, export
+
+**Goal:** sessions end cleanly, the reflection is saved, the summary comes from the server, and data exports to CSV.
+
+**Files:**
+- `backend/routes/chat.py`: `POST /api/sessions/{id}/end`, `GET /api/sessions/{id}/summary`
+- `frontend/app.js`: Finish & reflect → `/end` → reflection saved as a `post_session` check-in → summary page from `/summary`; Reset / New session keeps history
+- `scripts/export_data.py`: one CSV per table in `exports/` (UTF-8 with BOM so Excel shows characters correctly)
+
+**Manual checks:**
+
+1. Have a chat of 3 messages with at least two different strategies, click **Finish & reflect**, answer the reflection questions and open the summary.
+   **Expect:** message count, chat time and strategy bars match what happened (e.g. Validation 2, Advice 1).
+2. Start a new session, send one message, finish, and **skip** the reflection.
+   **Expect:** the summary still loads, with the reflection section empty.
+3. In Terminal B:
+   ```powershell
+   python scripts/export_data.py
+   dir exports
+   ```
+   **Expect:** `participants.csv`, `checkins.csv`, `sessions.csv`, `messages.csv`. Each opens correctly in Excel (columns separated, no garbled characters).
+
+---
+
+### Phase 9: Evaluation kit
+
+**Goal:** a script that produces a human-rating sheet comparing condition A (no strategy, plain prompt) with condition B (full pipeline), optionally for several models.
+
+**Files:**
+- `scripts/eval_responses.py`: options `--limit N`, `--models m1,m2`; writes `exports/rating_sheet_<timestamp>.csv` with columns `id, message, expected_strategy, model, condition, used_strategy, emotion, intensity, stage, reply, latency_ms, empathy_1to5, strategy_followed_yes_no, safe_yes_no` (the last three left empty)
+
+**Manual checks:**
+
+1. ```powershell
+   python scripts/eval_responses.py --limit 5
+   ```
+   **Expect:** a new CSV in `exports/` with **10** data rows (5 messages × conditions A and B).
+2. ```powershell
+   python scripts/eval_responses.py --limit 5 --models qwen/qwen3-8b,<second model>
+   ```
+   **Expect:** **20** rows, with the `model` column filled with both names.
+3. Open the CSV. **Expect:** condition A rows have empty `used_strategy/emotion/intensity/stage`, condition B rows have them filled, and the three rating columns are empty.
+
+---
+
+### Phase 10: Handover docs, student starter and mentoring.md
+
+**Goal:** everything a beginner and the mentor need. `mentoring.md` is written **last**, only after you confirm Phases 1–9 pass.
+
+**Files:**
+- `README.md`: what it is, 10-minute quick start (mock mode), adding an API key, folder map, disclaimer
+- `docs/SETUP.md`: Windows-first beginner setup (default locations, with a note on moving caches if disk is low), macOS/Linux note, OpenRouter key with a spending limit
+- `docs/ARCHITECTURE.md`, `docs/SAFETY.md`, `docs/TROUBLESHOOTING.md`
+- `student_starter/`: full app copy; `safety.check_message` (keyword check still works, plus a TODO for improvements), `classifier.classify`, `strategy_policy.choose_strategy`, `prompt_builder.build_messages`, `llm.chat_completion` as TODO stubs with docstrings, hints and safe placeholder returns
+- `mentoring.md`: 16 × 1-hour sessions per spec 15.1 (overview, safety briefing script, per-session plan, appendix)
+
+**Manual checks:**
+
+1. Clone the repo into a fresh folder (e.g. `D:\Projects\stillspace-test`) and follow `docs/SETUP.md` exactly, as if you were the student (on your laptop, keep the D: rule from Phase 1).
+   **Expect:** the app works end to end in mock mode.
+2. Read `mentoring.md`.
+   **Expect:** all 16 sessions have every part from spec 15.1, and every file and function it names exists.
+3. Copy `student_starter/` to `D:\Projects\starter-try` and do the student tasks of **sessions 4 and 7** exactly as written.
+   **Expect:** their "done when" checks pass.
+4. In `student_starter/` (its own venv or the same one):
+   ```powershell
+   cd student_starter
+   uvicorn backend.main:app --reload --port 8001
+   ```
+   **Expect:** the app runs at http://localhost:8001 in mock mode. The TODO functions return safe placeholders, Terminal A prints a clear `TODO (Session N): ...` hint, and crisis messages still trigger the safety response.
+5. Time yourself following the `README.md` quick start in a fresh clone. **Expect:** under 10 minutes.
+
+---
+
+## 4. Planned module headers (spec section 13)
+
+Every core module starts with `# mentoring.md: Session N - <topic>`. Planned mapping (finalised in Phase 10):
+
+| File | Session |
+|---|---|
+| `backend/main.py`, `backend/config.py`, `backend/routes/config_route.py` | 3 – How the app talks |
+| `backend/llm.py`, `backend/mock.py` | 4 – First LLM call and memory |
+| `backend/safety.py` | 5 – Safety layer |
+| `backend/strategy_policy.py` | 6 – Strategies and policy |
+| `backend/classifier.py` | 7 – Classifier prompt |
+| `scripts/eval_classifier.py` | 8 – Testing the classifier |
+| `backend/prompt_builder.py`, `backend/routes/chat.py` | 9 – Prompt builder |
+| `backend/checkins.py`, `backend/db.py`, `backend/routes/checkins.py`, `backend/routes/participants.py`, `scripts/export_data.py` | 11 – Check-ins and data ethics |
+| `scripts/eval_responses.py` | 13 – Evaluation design |
+
+---
+
+## 5. Decisions log
+
+Things the spec leaves open or gets slightly wrong. In each case I picked the simplest option. Tell me if you want any changed.
+
+| ID | Decision | Why |
+|---|---|---|
+| D-01 | The venv activation command is `.\.venv\Scripts\Activate.ps1` (the spec shows `.\\venv\...`, a typo). | The spec creates the venv as `.venv`. |
+| D-02 | The project gets onto D: with `git clone ... D:\Projects\stillspace` and then checking out branch `claude/gracious-euler-tlrs89`. | The spec runs `cd D:\Projects\stillspace` without saying how the folder is created. |
+| D-03 | `$env:TMP`/`$env:TEMP` are set per terminal (as the spec shows) **before** `python -m venv`, so venv creation also uses D:. | Keeps temp files off C: during install. |
+| D-04 | **Needs your OK:** add `tzdata` to `requirements.txt` (a sixth package, about 350 KB, maintained by the Python core team). | On Windows, Python has no built-in timezone database, so `ZoneInfo("Asia/Kolkata")` crashes without it. The spec says "only" 5 packages, but `APP_TIMEZONE` can't work on Windows without this. The alternative is a hard-coded +05:30 offset, which would ignore `APP_TIMEZONE`. |
+| D-05 | Empty `backend/__init__.py` and `backend/routes/__init__.py` are added. | So `uvicorn backend.main:app` and `from backend.safety import ...` work the same on every OS. |
+| D-06 | Helpline data lives in `backend/config.py` as `HELPLINES` (Phase 1); `safety.py` re-uses it from Phase 5. | `/api/config` needs helplines in Phase 1, before `safety.py` exists. There is one source, so the numbers can't drift apart. |
+| D-07 | Both strategy JSON files are written in full in Phase 1 (Phase 1 check 5 needs 8 strategies). Phase 6 only reviews or refines their wording. | Order of work. |
+| D-08 | `app_version` = `"0.1.0"`, as a constant in `config.py`. | The spec asks for an app version but gives no value. |
+| D-09 | Participant codes: letters and digits only, 3–20 characters, stored **upper-case** (so `p001` and `P001` are the same person). | Avoids duplicate participants from typing differences. |
+| D-10 | One "turn" in `HISTORY_TURNS` = one message (user or assistant). The default 6 = the last 3 exchanges. | The spec doesn't define "turn". This keeps prompts short and cheap. |
+| D-11 | The daily check-in is an upsert per local date: a second save the same day **merges** the new answers into today's row (so the sidebar mood doesn't wipe other daily answers). | Spec 11.6 says the sidebar mood and the daily question write the same row. |
+| D-12 | "Today" = current date in `APP_TIMEZONE` + `demo_day_offset` days. Fortnightly is due when today − local_date of the last fortnightly check-in ≥ 14 days. Incomplete PHQ-9 saves still count as a fortnightly check-in. | The spec says "the last" fortnightly, without excluding incomplete ones. |
+| D-13 | `chat_seconds` = `ended_at − started_at`, computed by the server in `/end`. | One source of truth, with no trust in the browser clock. |
+| D-14 | Phase 4 uses `prompts/plain_system.txt` (no strategy). Phase 9 re-uses the same file as **condition A**. | All prompt text stays in `.txt` files, and condition A is exactly what "no strategy" means. |
+| D-15 | Thinking is turned off by sending `extra_body={"reasoning": {"enabled": false}}` when the base URL is OpenRouter. `<think>…</think>` is always stripped as well. | Spec section 8. Other providers ignore or don't need the flag. |
+| D-16 | Phase 7 check 4 uses a commented-out `# DEBUG:` print line in `routes/chat.py`, instead of a new `.env` key. | The spec says "add print or log output". No new config is needed. |
+| D-17 | Export CSVs and eval CSVs are written as UTF-8 with BOM (`utf-8-sig`). | Excel on Windows otherwise garbles non-ASCII characters (e.g. Hinglish, curly quotes). |
+| D-18 | The mockup is also kept as `docs/mockup/Stillspace-2.html` (unchanged). | Needed for the Phase 2 side-by-side check and the final "design matches" acceptance check. |
+| D-19 | Extra checks marked "(Extra)" or "(Quick extra check)" are added to some phases. The spec's numbered checks are all kept. | Faster verification. You can skip them. |
+
+---
+
+## 6. Known issues
+
+| ID | Issue | Impact / plan |
+|---|---|---|
+| K-01 | **`Stillspace-2.html` is not in the repository.** Only the spec `.docx` is present. | Phase 1 doesn't need it. **Before Phase 2**, please commit it to the repo root (or attach it again). I'll move it to `docs/mockup/` (D-18). |
+| K-02 | The `qwen/qwen3-8b` model ID and its availability on OpenRouter can change over time. | If Phase 4 check 2 fails with "model not found", only `LLM_MODEL` in `.env` needs to change. |
+| K-03 | The keyword safety check can't catch every indirect phrasing, and may flag figures of speech. | It is backed by the classifier's `risk` check (Phase 7). False positives and negatives found in Phase 5 will be listed here. |
