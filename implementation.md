@@ -53,8 +53,11 @@ Around the chat there are check-ins (setup, daily mood, PHQ-9 every 14 days, pos
 | 8 | Reflection, summary, export | `backend/routes/chat.py` (end + summary), `frontend/app.js`, `scripts/export_data.py` | ⬜ Not started |
 | 9 | Evaluation kit | `scripts/eval_responses.py` | ⬜ Not started |
 | 10 | Handover docs, student starter, mentoring.md | `README.md`, `docs/SETUP.md`, `docs/ARCHITECTURE.md`, `docs/SAFETY.md`, `docs/TROUBLESHOOTING.md`, `student_starter/`, `mentoring.md` | ⬜ Not started |
+| 11 | Deployment readiness (Supabase + online safety) – **built after Phase 9, before Phase 10** | `backend/db.py`, `backend/config.py`, `backend/ratelimit.py`, `backend/alerts.py`, `backend/routes/*`, `backend/data/schema_postgres.sql`, `backend/data/consent.txt`, `frontend/*`, `scripts/create_codes.py`, `scripts/safety_report.py`, `scripts/delete_participant.py`, `scripts/export_data.py`, `requirements.txt`, `.env.example`, `docs/DEPLOYMENT.md` | ⬜ Not started |
 
 Status key: ⬜ not started · 🔨 built, waiting for your checks · ✅ checks passed
+
+**Build order (D-46):** 8 → 9 → **11** → 10. Phase 11 (deployment) was added after the spec. It is built before Phase 10 so that the handover docs, `student_starter/` and `mentoring.md` (still written last, as the spec requires) describe the final code, including deployment.
 
 ---
 
@@ -531,6 +534,42 @@ Before you start: `git pull origin claude/gracious-euler-tlrs89`; Terminal C (`o
 
 ---
 
+### Phase 11: Deployment readiness (Supabase + online safety)
+
+> **Added after the spec, at the developer's request (4 Nov 2026).** The spec's prototype is local-only (sections 3 and 16). Sharing the app with other people turns it into a study with real participants, so this phase adds the technical safeguards. **The legal and ethical approvals in the checklist are your responsibility and must be in place before any link is shared.**
+
+**Goal:** the same app can run (a) locally on SQLite exactly as before (student course, offline, mock mode), or (b) online for a small, approved group of participants, with Supabase Postgres, researcher-issued codes, rate limits, safety alerts, consent and an age check, and no demo or debug endpoints.
+
+**Design (D-46 to D-50):**
+
+| Area | What will be built | Default |
+|---|---|---|
+| Database | `db.py` uses **SQLite when `DATABASE_URL` is empty** and **Supabase Postgres when it is set**. Same functions, same tables (`schema_postgres.sql`). New package `psycopg[binary]` (deviation from the spec's package list, D-47). Tables get **Row Level Security switched on with no policies**, so Supabase's public Data API cannot read them; only the backend's database connection can. | Local: SQLite. Online: Supabase, region **Mumbai** if offered |
+| Who can sign in | `APP_ENV=production` → **only researcher-issued codes** can sign in (no self-made codes like `P001`). `scripts/create_codes.py --count 20` creates random, unguessable codes (e.g. `SS-7K3M-Q9TX`) and prints them for you to hand out. Unknown codes get the same message as wrong ones, and repeated failed attempts are slowed down. Still no passwords or email (spec section 3). | Local: any code, as now |
+| Cost and abuse limits | `backend/ratelimit.py` (in memory, no extra framework): **chat messages per participant per hour** and a **daily total for the whole app**; sign-in attempts per IP address per minute. When a limit is reached, the person sees a friendly message. **The safety reply is never rate-limited.** | 30 per hour per participant · 500 per day in total · 10 sign-ins per minute per IP |
+| AI model | OpenRouter with credits (`qwen/qwen3-14b`), key only in the host's secret settings, **spending limit set on the OpenRouter key**. Ollama stays for local development. | — |
+| Safety monitoring | `backend/alerts.py`: every safety flag (keyword, classifier, PHQ item 9) sends a short alert to `SAFETY_WEBHOOK_URL` (Slack, Discord, Teams or Google Chat), with **participant code, time and flag type only, never the message text**. `scripts/safety_report.py --days 7` lists all flags for review. `FOLLOWUP_CONTACT` becomes **required** in production. | Webhook optional locally, strongly recommended online |
+| Consent and age | In production the consent step shows the study text from `backend/data/consent.txt` (purpose, what is stored, the AI provider, retention, withdrawal, contacts, helplines) and requires an **"I am 18 or older"** tick (or guardian consent if your approval covers under-18s: `MIN_AGE_CONFIRMATION` setting). | 18+ only |
+| Withdrawal and retention | `scripts/delete_participant.py CODE` removes one participant and all their data (the right to withdraw). `export_data.py` works with both SQLite and Supabase. Backups: Supabase's own backups, plus regular exports. | — |
+| Locked down in production | `DEMO_MODE` forced off; FastAPI's `/docs` and `/redoc` pages off; the debug print stays commented; error replies never include internal details. | — |
+| Hosting | **Render** web service (no Docker, spec section 3): start command `uvicorn backend.main:app --host 0.0.0.0 --port $PORT`, HTTPS included, env vars set in Render's dashboard. Free tier sleeps when idle (first request slow); paid tier for a real study. | Render |
+| Documentation | `docs/DEPLOYMENT.md`: step by step (Supabase project → tables → codes → OpenRouter key with a limit → Render → webhook), plus a **pre-launch checklist**: ethics approval, consent text approved, guardian consent rule, named follow-up adult, privacy notice, DPDP check, retention period, who watches safety alerts and how fast. | — |
+
+**New `.env` keys:** `APP_ENV` (local/production), `DATABASE_URL`, `CHAT_LIMIT_PER_HOUR`, `DAILY_CHAT_LIMIT`, `LOGIN_LIMIT_PER_MINUTE`, `SAFETY_WEBHOOK_URL`, `MIN_AGE_CONFIRMATION` (18 / none).
+
+**Manual checks (planned; details are finalised when the phase is built):**
+1. Local regression: with `DATABASE_URL` empty and `APP_ENV=local`, the Phase 3–8 checks still pass on SQLite.
+2. Create a Supabase project, copy its connection string into `DATABASE_URL`, start uvicorn locally. **Expect:** the startup line says `db=supabase (postgres)`, and the Supabase Table Editor shows the 4 tables with **RLS enabled**.
+3. `python scripts/create_codes.py --count 3` → 3 random codes. With `APP_ENV=production`: one of them signs in; `P001` is refused with a friendly message; after 10 quick wrong attempts, sign-in is slowed down.
+4. Set `CHAT_LIMIT_PER_HOUR=3`: the 4th message shows the friendly limit message, **but a crisis message still gets the safety reply**.
+5. Set `SAFETY_WEBHOOK_URL` (e.g. a Discord test channel): a crisis message and a PHQ item-9 answer each post an alert with code, time and flag type, **no message text**.
+6. Production consent: the study text and an "18 or older" tick are required; `/docs` and `/api/demo/advance` return 404.
+7. `python scripts/delete_participant.py <code>` removes that participant's rows; `python scripts/export_data.py` exports from Supabase.
+8. Deploy to Render following `docs/DEPLOYMENT.md`; open the HTTPS link on your phone; sign in with an issued code; chat (OpenRouter), crisis reply and alert work online.
+9. Walk through the pre-launch checklist in `docs/DEPLOYMENT.md` and confirm each item **before** sharing the link.
+
+---
+
 ## 4. Planned module headers (spec section 13)
 
 Every core module starts with `# mentoring.md: Session N - <topic>`. Planned mapping (finalised in Phase 10):
@@ -600,6 +639,11 @@ Things the spec leaves open or gets slightly wrong. In each case I picked the si
 | D-43 | `/no_think` is added only for **hybrid** Qwen3 models (name contains `qwen3` but not `instruct` or `thinking`): on the system message if there is one, otherwise on the last message. **Dev model stays `qwen3:4b-instruct-2507-q4_K_M` for classifier and replies.** | The `qwen3:8b` comparison failed: it thought until the 200-token limit (cut-off JSON → fallback) and took 35–51 s per message on the 6 GB GPU. The classifier sends one user message, so the old system-only switch never reached it. The handoff model `qwen/qwen3-14b` is hybrid too. |
 | D-44 | Phase 7 pipeline details: the classifier gets the same history as the reply; `meta_json` = classifier meta + `classifier_source` + `classifier_ms`; `latency_ms` = total wait; check-in context = today's mood + latest **complete** PHQ band only; a classifier `risk: high` gives the fixed reply with `safety_flag="classifier"` and keeps the classifier's strategy in `classified_strategy`; the panel explains when a request overrode the classifier; fallback replies keep the "Fallback reply" badge; new keyword rule `en-sleep-never-wake`. | Spec 5, 10, 11.2, 11.4 and 12; honest badges (a fallback text was not shaped by any strategy); the extra keyword rule closes a gap found while testing. |
 | D-45 | Phase 7 check 5 is run with **a new session before each strategy**. No code change. | In your first run the identical message sent 4× in one conversation made the 4B model copy its previous reply for Reflection: history outweighed the new strategy instruction. That's a test-design issue (real users rarely repeat the exact message), but worth knowing for the Phase 9 evaluation: compare strategies on independent conversations. |
+| D-46 | **Deployment added as Phase 11** (Supabase + online safety), built **after Phase 9 and before Phase 10**, so the final docs, `student_starter/` and `mentoring.md` describe the finished code. The local SQLite setup stays the default for the student course. | Your plan to deploy and share the app (4 Nov 2026). Keeps the spec's local prototype and offline teaching intact. |
+| D-47 | **Supabase Postgres** when `DATABASE_URL` is set; adds the package `psycopg[binary]` (a second deviation from the spec's package list, after `tzdata`). RLS on, with no policies, so Supabase's public Data API can't read the tables. | Hosts wipe local files on redeploy, so SQLite can't hold data online. Supabase was chosen over Neon for its dashboard, regions and room to add real logins later. RLS closes Supabase's public-API exposure. |
+| D-48 | **Online access = researcher-issued random codes only** (no passwords or email, in line with spec section 3), with sign-in attempts slowed after failures. | Guessable codes like `P001` would let anyone read another participant's status (incl. date of birth) online (K-08). |
+| D-49 | **Rate limits in memory** (per participant per hour, daily total, sign-ins per IP); **the safety reply is never limited**. Safety alerts go to a webhook with **no message text**. | Protects the OpenRouter budget and abuse without a new framework; alerts let the named adult act quickly without spreading sensitive text. |
+| D-50 | **Hosting default: Render** (no Docker). **Online version is 18+ by default** (`MIN_AGE_CONFIRMATION`), unless your approval covers guardian consent. | Simplest HTTPS host for a FastAPI app; spec section 16 requires guardian consent for under-18s. |
 
 ---
 
@@ -614,3 +658,4 @@ Things the spec leaves open or gets slightly wrong. In each case I picked the si
 | K-05 | ~~Chat answers came from placeholders in `app.js`.~~ | **Resolved in Phase 4:** replies come from `/api/chat` (mock or LLM) and are stored. |
 | K-06 | A mood or style chosen on the consent page **before** signing in is not saved: after sign-in the page shows what the server has stored. | Minor. Choose them after signing in. |
 | K-07 | A page refresh starts a new chat session, so the conversation disappears from the screen and the summary counts only the current session. All messages are still stored in the database. | Acceptable for the prototype (D-27). Could restore the last session's messages later if wanted. |
+| K-08 | **Do not share the current app online.** Codes like `P001` are guessable, and `GET /api/participants/{code}/status` returns that participant's saved answers including date of birth. Demo endpoints and `/docs` are open. | Fine on one laptop. Fixed by Phase 11 (D-48 to D-50) before any deployment. |

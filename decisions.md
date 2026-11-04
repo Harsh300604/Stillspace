@@ -188,7 +188,29 @@ Each entry has:
 
 ---
 
-## 9. Scope decisions
+## 9. Going online: Supabase and online safety (Phase 11, planned)
+
+### Why a new phase (D-46)
+- The developer plans to deploy the app so the student can share it with people. The spec's prototype is local-only, so this is a deliberate extension.
+- **Order:** Phases 8 → 9 → 11 → 10. The handover docs and `mentoring.md` stay last, so they describe the final code.
+- **The local setup does not change:** the student course still runs on SQLite, offline, in mock mode.
+
+### Supabase, not Neon (D-47)
+- Both are hosted Postgres. Supabase was chosen for its dashboard (the student can see tables, like DB Browser), its region choice (India-near hosting matters for DPDP), and built-in auth if real logins are ever needed.
+- **SQLite when `DATABASE_URL` is empty, Supabase when it is set.** All SQL stays in `db.py`.
+- **Row Level Security is switched on with no policies:** Supabase exposes tables through a public API by default; RLS with no policies blocks that, and only our backend's direct connection can read the data.
+
+### Online safety additions (D-48 to D-50)
+- **Researcher-issued, unguessable codes:** without them, anyone could type `P001` and read another person's answers and date of birth (K-08).
+- **Rate limits** protect the paid model budget; **safety replies are never limited**.
+- **Safety alerts** to a chat webhook with code, time and flag type only, never the message text, so the named adult can follow up quickly.
+- **Consent text, an 18+ check by default, a delete-participant script** (right to withdraw), demo and `/docs` pages off.
+- **Pre-launch checklist** in `docs/DEPLOYMENT.md`: no link is shared until ethics approval, approved consent text, a named follow-up adult and a privacy notice are in place.
+- **Teaching note:** a strong final-session topic. Moving from a prototype to real users changes the responsibilities far more than the code.
+
+---
+
+## 10. Scope decisions
 
 - **Classifier (D-21):** prompt-based with Qwen. A trained DistilBERT/DeBERTa classifier is a documented **stretch idea only** (spec section 3 puts it out of scope; 30 test messages are too few to train on; the ESConv dataset would be the source).
 - **Extra checks (D-19):** some phases have extra checks marked "(Extra)". All the spec's checks are kept.
@@ -196,7 +218,7 @@ Each entry has:
 
 ---
 
-## 10. Changelog of this file
+## 11. Changelog of this file
 
 | Date | Phase | Change |
 |---|---|---|
@@ -204,3 +226,4 @@ Each entry has:
 | 4 Nov 2026 | Phase 5 | Safety section updated (D-40) |
 | 4 Nov 2026 | Phase 6 | Classifier section added (D-41); first real result and no-tuning decision (D-42); qwen3:8b comparison and hybrid-model fix (D-43) |
 | 4 Nov 2026 | Phase 7 | Strategy-aware replies section added (D-44); check-5 method (D-45) |
+| 4 Nov 2026 | after Phase 7 | Deployment plan: Supabase + online safety as Phase 11 (D-46 to D-50) |
