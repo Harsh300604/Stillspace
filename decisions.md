@@ -239,6 +239,13 @@ Each entry has:
 - **Safe placeholders:** each stub returns something harmless (a reply saying it's a TODO, default classifier values, the first strategy, the plain prompt) and prints `[TODO Session N]`, so the app always runs and the student sees exactly what's missing.
 - **Teaching note:** the finished app in the main folder is the answer key. The verification swapped in the finished functions to prove the "done when" checks are reachable.
 
+### `mentoring.md` (Phase 10, part 2)
+- **Structure follows spec 15.1 exactly**, and every session uses the same headings so the mentor always knows where to look. Hints come before answers, and every "done when" has a command with its expected output, so success is never a matter of opinion.
+- **Real material from the build:** the developer's classifier misses (T18, T21, T23) are the Session 8 exercise (they were left un-tuned on purpose, D-42); the `!` bug, the thinking model, the copying chat (D-45) and the guessable sessions (D-55) are teaching stories (appendix A5).
+- **Mock mode as the safety net:** every session works without a model; real-model checks move to homework if the internet fails.
+- **The student gets only the starter (D-59)** as a zip, with the student docs inside it, so the answer key isn't one folder away.
+- **Safety gap found while writing (D-58):** spaced letters ("d i e") were not caught. The fix only adds matches; the test set still passes. It became a Session 5 story about safety never being finished.
+
 ### `flow.md`
 - Added at the developer's request: a plain-language map of users, sign-up and sign-in (no accounts; codes only), the journey, the chat pipeline, safety and the researcher's scripts. A good first read for the mentor and the student.
 
@@ -265,3 +272,4 @@ Each entry has:
 | 4 Nov 2026 | Phase 11 | Built: Supabase support, online safeguards, session ownership (D-54, D-55); issued-codes fix (D-56) |
 | 4 Nov 2026 | Phase 10 (part 1) | Handover docs, flow.md, student starter design (D-57) |
 | 4 Nov 2026 | after Phase 7 | Deployment plan: Supabase + online safety as Phase 11 (D-46 to D-50); developer's choices on hosting, ages, limits, no alerts (D-49 to D-51) |
+| 4 Nov 2026 | Phase 10 part 2 | `mentoring.md` section added (D-58, D-59) |

@@ -11,9 +11,9 @@
 
 | Item | Value |
 |---|---|
-| Last completed phase | **Phase 11** – Deployment readiness (Supabase + online safety) |
-| Current phase | **Phase 10 – Part 1** (docs, flow.md, student_starter) built, waiting for checks; Part 2 = mentoring.md |
-| Next phase | Phase 10 – handover docs, student starter, mentoring.md (last) |
+| Last completed phase | **Phase 10** – Handover docs, student starter and `mentoring.md` (**all phases done**) |
+| Current phase | none – build complete (4 Nov 2026) |
+| Next step | Developer's go-live tasks (see `docs/DEPLOYMENT.md` checklist); mentor starts the 16 sessions with `mentoring.md` |
 | Build order from here | 8 → 9 → **11 (deployment: Supabase + online safety)** → 10 (docs, student starter, mentoring.md last) |
 | Branch | `claude/gracious-euler-tlrs89` (repo `harsh300604/stillspace`) |
 | Project folder (dev laptop) | `D:\CreatED-cloud\stillspace` |
@@ -147,7 +147,14 @@ Mock mode: set `LLM_API_KEY=` (empty) and restart.
 - **Developer's run:** connected to their real Supabase project (`aws-0-ap-northeast-1` = **Tokyo**), all 4 tables with RLS on, 3 issued codes created. Advice: keep Tokyo as the test project; create the study project in Mumbai (`ap-south-1`) (K-10). **Later the same day:** the developer switched `DATABASE_URL` to a new Mumbai project; start-up created the tables, `create_codes.py --count 3` and `safety_report.py` ran against `aws-0-ap-south-1`. K-10 resolved. Those 3 codes were also pasted in chat, so they count as test codes.
 - **Heads-up:** the developer's `.env` already has `DATABASE_URL`, so after `git pull` + `pip install -r requirements.txt` the local app writes to Supabase.
 
-### Phase 10 – Part 1: handover docs + student starter (4 Nov 2026) 🔨 built, waiting for checks
+### Phase 10 – Part 2: mentoring.md (4 Nov 2026) ✅ done
+- **Developer's instruction:** the checks are not their task (they only develop), so the dev chat ran all Phase 10 checks on a fresh clone of the branch: setup + both apps in mock mode, a script check that every file/function named in `mentoring.md` exists and every session has all spec 15.1 parts, and Sessions 4/6/7/9 "done when" checks with the finished functions and a fake model server. All passed.
+- **Built:** `mentoring.md` (overview, safety briefing script, 16 sessions, appendix with glossary, rubric, demo checklist, answer-key map, real bugs as teaching stories). Session 8 uses the developer's real classifier misses (T18, T21, T23).
+- **Found while writing:** "I want to d i e" (spaced letters) was not caught → rule added to `normalise()` in both folders (D-58); safety test still 30/0. The student only receives the starter (zip), so the four student docs were copied into `student_starter/docs/` (D-59). Old `qwen3:8b` comment in `.env.example` fixed.
+- **Lesson:** writing teaching material is a review. Explaining each check step by step surfaced a real safety gap and a missing-docs problem that no test had caught.
+- **Same day:** Supabase moved to a new Mumbai project (`ap-south-1`), K-10 resolved.
+
+### Phase 10 – Part 1: handover docs + student starter (4 Nov 2026) ✅ built
 - **Built:** `README.md`, **`flow.md`** (requested: users, sign-up/sign-in, journey, chat pipeline, safety, researcher side, data, FAQ), `docs/SETUP.md`, `docs/ARCHITECTURE.md`, `docs/SAFETY.md` (incl. what to do after a real disclosure), `docs/TROUBLESHOOTING.md` (every issue from this build), `student_starter/` (TODO stubs per session, safe placeholders, working safety).
 - **Developer's question answered:** no accounts or passwords. Locally a new code = sign-up; online only researcher-issued codes work (no self sign-up).
 - **Verified by the dev chat:** the starter runs in mock mode and with a model (safe placeholders, `[TODO Session N]` prints), safety 30/0 inside the starter, and swapping in the finished Session 4 + 7 functions gives `source=llm` and working memory.
@@ -174,3 +181,4 @@ Mock mode: set `LLM_API_KEY=` (empty) and restart.
 9. **A score is only as honest as its test set.** The mock classifier scores 93% because the same person wrote the rules and the test messages. Ask the student who wrote the labels, and whether the model has seen similar examples.
 10. **Bigger isn't automatically better.** On a 6 GB GPU, `qwen3:8b` was 10× slower than the 4B instruct model and, while thinking was still on, produced no usable answers. Measure before switching models.
 11. **Test design can fake a bug.** Sending the same message repeatedly in one chat made the model copy itself, which looked like "strategies don't work". Compare conditions in separate, fresh conversations.
+12. **Explaining is reviewing.** Writing the session-by-session plan found a safety gap (spaced letters) that the test set didn't cover. Keep asking "what could slip through?"
