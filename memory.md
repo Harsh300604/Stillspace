@@ -22,7 +22,7 @@
 | Model (dev) | Ollama `qwen3:4b-instruct-2507-q4_K_M`, models in `D:\ollama\models` |
 | Model (handoff default) | OpenRouter `qwen/qwen3-14b` |
 | C: free space | 48.48 GB at the start; unchanged by the project |
-| Database (dev) | `DATABASE_URL` is set in the developer's `.env` (Supabase). Comment it out with `#` to use local SQLite (`data\stillspace.db`) |
+| Database (dev) | `DATABASE_URL` is set in the developer's `.env`: Supabase project in **Mumbai** (`aws-0-ap-south-1`, since 4 Nov 2026; the earlier Tokyo project is no longer used). Comment it out with `#` to use local SQLite (`data\stillspace.db`) |
 
 ### How to start working (developer laptop)
 
@@ -144,7 +144,7 @@ Mock mode: set `LLM_API_KEY=` (empty) and restart.
 - **Verified by the dev chat:** 4 rounds: SQLite regression, the same suites on a real Postgres 16 server, all production safeguards, upgrading an old SQLite file and the online consent page in a browser. Not testable from the dev chat: the developer's own Supabase project and a real Railway/Render deploy.
 - **Test-environment hiccup:** the throwaway Postgres server crashed when the sandbox reset folder permissions → moved it to Postgres's own home directory. Not an app issue.
 - **Bug caught in the second test run (D-56):** `P001` could sign in online because local testing had already put it into the same Postgres/Supabase database. Fix: an `issued` flag; production accepts only codes made by `create_codes.py`. Codes made before the fix must be re-created.
-- **Developer's run:** connected to their real Supabase project (`aws-0-ap-northeast-1` = **Tokyo**), all 4 tables with RLS on, 3 issued codes created. Advice: keep Tokyo as the test project; create the study project in Mumbai (`ap-south-1`) (K-10).
+- **Developer's run:** connected to their real Supabase project (`aws-0-ap-northeast-1` = **Tokyo**), all 4 tables with RLS on, 3 issued codes created. Advice: keep Tokyo as the test project; create the study project in Mumbai (`ap-south-1`) (K-10). **Later the same day:** the developer switched `DATABASE_URL` to a new Mumbai project; start-up created the tables, `create_codes.py --count 3` and `safety_report.py` ran against `aws-0-ap-south-1`. K-10 resolved. Those 3 codes were also pasted in chat, so they count as test codes.
 - **Heads-up:** the developer's `.env` already has `DATABASE_URL`, so after `git pull` + `pip install -r requirements.txt` the local app writes to Supabase.
 
 ### Phase 10 – Part 1: handover docs + student starter (4 Nov 2026) 🔨 built, waiting for checks
