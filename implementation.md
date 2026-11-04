@@ -314,7 +314,7 @@ Before you start: `git pull origin claude/gracious-euler-tlrs89`, restart the se
 
 **Goal:** deterministic crisis detection that works in every mode, with the fixed crisis reply, the safety badge, the PHQ item-9 rule in `safety.py`, and the risk indicator.
 
-**Status:** 🔨 Built – waiting for your checks.
+**Status:** 🔨 Built. **Checks 1–7 all passed in the dev chat's run on a fresh copy (4 Nov 2026, at your request)**, with a model server standing in for Ollama: S01–S20 → safety reply 20/20 (0 model calls), N01–N10 → AI reply 10/10, `30 rows, 0 mismatches`, crisis reply in mock mode and with a broken model (`NotFoundError 404` in the log), risk indicator incl. the New-session and PHQ item-9 cases, DB rows with `matched_rule`, `FOLLOWUP_CONTACT` shown. Waiting for your OK to mark it done.
 
 **Files:**
 - `backend/safety.py`: `normalise()`, `variants()`, `find_crisis_match()` (returns the rule id), `check_message()` (True/False), `crisis_response()`, `phq_item9_flag()`, `HELPLINES`

@@ -101,6 +101,7 @@ Mock mode: set `LLM_API_KEY=` (empty) and restart.
   - Python's `\b` word boundary does not work inside Devanagari words (vowel signs) → Devanagari phrases match as plain text.
   - My test script choked on the CSV's Windows line endings (needed for Excel) → parse CSVs with a real CSV reader.
 - **Known false positive (kept on purpose):** "I love the movie suicide squad".
+- **Checks 1–7:** all passed in the dev chat's run on a fresh copy, at the developer's request (model server standing in for Ollama).
 
 ---
 
