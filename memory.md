@@ -12,8 +12,8 @@
 | Item | Value |
 |---|---|
 | Last completed phase | **Phase 7** – Prompt builder and strategy-aware replies |
-| Current phase | – (Phase 8 not started yet) |
-| Next phase | Phase 8 – Reflection, summary, export |
+| Current phase | **Phase 8 – Reflection, summary, export** (built, waiting for the developer's checks) |
+| Next phase | Phase 9 – Evaluation kit |
 | Build order from here | 8 → 9 → **11 (deployment: Supabase + online safety)** → 10 (docs, student starter, mentoring.md last) |
 | Branch | `claude/gracious-euler-tlrs89` (repo `harsh300604/stillspace`) |
 | Project folder (dev laptop) | `D:\CreatED-cloud\stillspace` |
@@ -124,6 +124,11 @@ Mock mode: set `LLM_API_KEY=` (empty) and restart.
 - **Expect** ~6–9 s per reply with Ollama now (two model calls); mock mode stays instant.
 - **Developer's first run:** checks 1 and 2 good. In check 5 the **Reflection reply was identical to the Validation reply**: the same message was sent 4× in one conversation, so the model copied its own earlier reply from the history. Fix: a new session before each strategy (D-45). Lesson: when comparing strategies, use independent conversations (this matters for Phase 9 too).
 - **Checks 1–7 (dev-chat run on a fresh copy, at the developer's request):** all passed, including the privacy scan of the printed prompt and of every request to the model, and fresh sessions sending no earlier history.
+
+### Phase 8 – Reflection, summary, export (4 Nov 2026) 🔨 built, waiting for checks
+- **Built:** `routes/sessions.py` (start/end/summary), reflection saved as a `post_session` check-in, a server-built summary page (time, messages, latest PHQ-9, strategy bars, reflection), `scripts/export_data.py` (4 CSVs for Excel).
+- **Verified by the dev chat:** API cases + browser checks 1 and 2 + export (4 CSVs with BOM); Phase 3/7 regressions green.
+- **Note:** `db.py` is 214 lines; it gets restructured in Phase 11 (Postgres).
 
 ### Plan change after Phase 7 (4 Nov 2026)
 - The developer wants to deploy the app later so the student can share it. **Decision:** Supabase Postgres + online safety, as a new **Phase 11**, built after Phase 9 and before Phase 10 (D-46 to D-50).

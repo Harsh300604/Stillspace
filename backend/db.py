@@ -183,6 +183,31 @@ def recent_messages(conn: sqlite3.Connection, session_id: int, limit: int) -> li
     return list(reversed(rows))
 
 
+def end_session(conn: sqlite3.Connection, session_id: int, ended_at: str, chat_seconds: int) -> None:
+    """Store when the session ended and how long it lasted (ending again later just updates it)."""
+    conn.execute("UPDATE sessions SET ended_at = ?, chat_seconds = ? WHERE id = ?", (ended_at, chat_seconds, session_id))
+
+
+def used_strategy_counts(conn: sqlite3.Connection, session_id: int) -> dict:
+    """How many assistant replies used each strategy in a session, e.g. {"Validation": 2, "Safety": 1}."""
+    rows = conn.execute("SELECT used_strategy, COUNT(*) FROM messages WHERE session_id = ? AND role = 'assistant'"
+                        " GROUP BY used_strategy", (session_id,)).fetchall()
+    return {(row[0] or "none"): row[1] for row in rows}
+
+
+def last_message(conn: sqlite3.Connection, session_id: int, role: str) -> sqlite3.Row | None:
+    """The newest message of one role in a session (for the last requested/used strategy)."""
+    return conn.execute("SELECT * FROM messages WHERE session_id = ? AND role = ? ORDER BY id DESC LIMIT 1",
+                        (session_id, role)).fetchone()
+
+
+def reflection_for_session(conn: sqlite3.Connection, session_id: int) -> dict | None:
+    """The latest post-session reflection answers for a session, or None if it was skipped."""
+    row = conn.execute("SELECT answers_json FROM checkins WHERE session_id = ? AND type = 'post_session'"
+                       " ORDER BY id DESC LIMIT 1", (session_id,)).fetchone()
+    return json.loads(row[0]) if row else None
+
+
 def count_messages(conn: sqlite3.Connection, session_id: int, role: str) -> int:
     """How many messages of one role a session has (used to vary mock replies)."""
     return conn.execute("SELECT COUNT(*) FROM messages WHERE session_id = ? AND role = ?",

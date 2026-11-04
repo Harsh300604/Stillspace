@@ -1,5 +1,5 @@
 # mentoring.md: Session 9 - Prompt builder
-"""Chat sessions and POST /api/chat: the full pipeline from spec section 5.
+"""POST /api/chat: the full pipeline from spec section 5 (sessions live in routes/sessions.py).
 
     1. keyword safety check      safety.find_crisis_match()  -> fixed reply, no AI
     2. classifier                classifier.classify()       -> strategy + meta
@@ -18,7 +18,6 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from backend import checkins, classifier, config, db, llm, mock, prompt_builder, safety, strategy_policy
-from backend.routes.participants import find_participant
 
 router = APIRouter()
 
@@ -26,10 +25,6 @@ MAX_MESSAGE_CHARS = 3000  # same limit as the chat box in the page
 FALLBACK_REPLY = ("I'm sorry, I couldn't put a reply together just now. "
                   "Would you like to tell me a bit more, or try sending that again?")
 META_KEYS = ["emotion", "intensity", "stage", "risk", "confidence", "rationale"]
-
-
-class SessionBody(BaseModel):
-    code: str
 
 
 class ChatBody(BaseModel):
@@ -74,17 +69,6 @@ def generate_reply(prompt: list[dict], strategy_name: str, turn: int) -> tuple[d
         result["text"] = FALLBACK_REPLY
         return result, "fallback"
     return result, "llm"
-
-
-@router.post("/api/sessions")
-def start_session(body: SessionBody) -> dict:
-    """Create a new chat session for a participant."""
-    with closing(db.get_connection()) as conn:
-        participant = find_participant(conn, body.code)
-        session_id = db.create_session(conn, participant["id"])
-        conn.commit()
-    print(f"[chat] new session {session_id} for {participant['code']}")
-    return {"session_id": session_id}
 
 
 @router.post("/api/chat")

@@ -50,7 +50,7 @@ Around the chat there are check-ins (setup, daily mood, PHQ-9 every 14 days, pos
 | 5 | Safety layer | `backend/safety.py`, `backend/data/crisis_keywords.json`, `backend/data/prompts/crisis_response.txt`, `eval/safety_prompts.csv`, `backend/routes/chat.py`, `backend/checkins.py`, `frontend/app.js`, `frontend/styles.css`, `frontend/index.html` | ✅ Done – checks passed |
 | 6 | Strategy classifier | `backend/classifier.py`, `backend/data/prompts/classifier.txt`, `backend/mock.py`, `eval/test_messages.csv`, `scripts/eval_classifier.py` | ✅ Done – checks passed (90%) |
 | 7 | Prompt builder and strategy-aware replies | `backend/strategy_policy.py`, `backend/prompt_builder.py`, `backend/data/prompts/system.txt`, `backend/routes/chat.py`, `backend/checkins.py`, `backend/db.py`, `backend/data/crisis_keywords.json`, `frontend/app.js` | ✅ Done – checks passed |
-| 8 | Reflection, summary, export | `backend/routes/chat.py` (end + summary), `frontend/app.js`, `scripts/export_data.py` | ⬜ Not started |
+| 8 | Reflection, summary, export | `backend/routes/sessions.py` (new), `backend/routes/chat.py`, `backend/db.py`, `backend/main.py`, `frontend/app.js`, `scripts/export_data.py` | 🔨 Built – waiting for your checks |
 | 9 | Evaluation kit | `scripts/eval_responses.py` | ⬜ Not started |
 | 10 | Handover docs, student starter, mentoring.md | `README.md`, `docs/SETUP.md`, `docs/ARCHITECTURE.md`, `docs/SAFETY.md`, `docs/TROUBLESHOOTING.md`, `student_starter/`, `mentoring.md` | ⬜ Not started |
 | 11 | Deployment readiness (Supabase + online safety) – **built after Phase 9, before Phase 10** | `backend/db.py`, `backend/config.py`, `backend/ratelimit.py`, `backend/routes/*`, `backend/data/schema_postgres.sql`, `backend/data/consent.txt`, `frontend/*`, `scripts/create_codes.py`, `scripts/safety_report.py`, `scripts/delete_participant.py`, `scripts/export_data.py`, `requirements.txt`, `.env.example`, `docs/DEPLOYMENT.md` | ⬜ Not started |
@@ -464,23 +464,45 @@ Before you start: `git pull origin claude/gracious-euler-tlrs89`; Terminal C (`o
 
 **Goal:** sessions end cleanly, the reflection is saved, the summary comes from the server, and data exports to CSV.
 
+**Status:** 🔨 Built – waiting for your checks.
+
 **Files:**
-- `backend/routes/chat.py`: `POST /api/sessions/{id}/end`, `GET /api/sessions/{id}/summary`
-- `frontend/app.js`: Finish & reflect → `/end` → reflection saved as a `post_session` check-in → summary page from `/summary`; Reset / New session keeps history
-- `scripts/export_data.py`: one CSV per table in `exports/` (UTF-8 with BOM so Excel shows characters correctly)
+- `backend/routes/sessions.py` (new, D-52): `POST /api/sessions` (moved from chat.py), `POST /api/sessions/{id}/end` (stores `ended_at` and `chat_seconds` using the server clock, D-13), `GET /api/sessions/{id}/summary` → `message_count`, `reply_count`, `chat_seconds`, `strategy_counts` (incl. `Safety`), `requested_strategy`, `last_used_strategy`, `latest_phq`, `reflection`, `started_at`, `ended_at`.
+- `backend/routes/chat.py`: now only `POST /api/chat` (135 lines).
+- `backend/db.py`: `end_session()`, `used_strategy_counts()`, `last_message()`, `reflection_for_session()`.
+- `frontend/app.js`: **Finish & reflect** → `/end` → reflection; **View summary** saves the answers as a `post_session` check-in with the `session_id`; **Skip for now** saves nothing; the summary page loads from `/summary` (with a loading line and a friendly error + Try again), showing the server's chat time, messages sent, the **latest saved PHQ-9** (mockup score box with its date), strategy bars, a "Safety responses: N" line if any, requested vs last used style, and the reflection answers (or "Reflection skipped.").
+- `scripts/export_data.py`: one CSV per table in `exports/` (`participants`, `checkins`, `sessions`, `messages`), UTF-8 with BOM for Excel (D-17), with a privacy reminder.
+
+**What was done / deviations (D-52):**
+- Session endpoints moved to `routes/sessions.py` so `chat.py` stays near the ~150-line guideline (spec 7 listed them under chat.py).
+- `chat_seconds` = from opening the chat to clicking Finish (server clock), so it can include pauses (e.g. a visit to the check-ins tab). Finishing again later updates it. A session that was never ended counts up to "now" in the summary.
+- Strategy bars are shares of all **replies** in the session. A refresh starts a new session (K-07), so the summary shows the current session only.
+- "Review reflection" → "View summary" saves the reflection again; the summary shows the latest one.
+- Exports overwrite the previous files each run.
+- `backend/db.py` is now 214 lines; it will be restructured in Phase 11 when Postgres support is added.
+- **Automated verification (dev chat):** API: end, summary, post_session with session_id, 404s; browser: check 1 (3 messages → "Messages sent 3", server time 00:04, bars Validation 2 / Advice 1 matching the badges, reflection "comfortable 7/10 · understood 8/10 · helpful: Yes", latest PHQ "9 / 27 · Mild"), check 2 (skip → "Reflection skipped.", summary loads), Review reflection flow; check 3: 4 CSVs with BOM and headers. Phase 3 (33/33) and Phase 7 (9/9) regressions pass.
 
 **Manual checks:**
 
-1. Have a chat of 3 messages with at least two different strategies, click **Finish & reflect**, answer the reflection questions and open the summary.
-   **Expect:** message count, chat time and strategy bars match what happened (e.g. Validation 2, Advice 1).
-2. Start a new session, send one message, finish, and **skip** the reflection.
-   **Expect:** the summary still loads, with the reflection section empty.
+Before you start: `git pull origin claude/gracious-euler-tlrs89`, restart uvicorn, **Ctrl+F5**. Mock mode is quickest for this phase (`LLM_API_KEY=` empty); Ollama works too.
+
+1. Sign in, chat **3 messages** that lead to at least two different strategies (e.g. "I had a long day at school", "What should I do to relax tonight?", "My friends were mean to me"). Click **Finish & reflect**, answer the three reflection questions, click **View summary**.
+   **Expect:** "Messages sent 3"; "Conversation time" roughly how long you chatted; the strategy bars match the badges you saw (e.g. Validation 2 replies, Advice 1 reply); "Your reflection: comfortable N/10 · understood N/10 · helpful: …"; the PHQ-9 box shows your latest saved PHQ-9 with its date. Terminal A: `[chat] session N ended after Ns`.
+2. Click **Start new session**, send one message, click **Finish & reflect**, then **Skip for now**.
+   **Expect:** the summary still loads: "Messages sent 1" and "Reflection skipped."
 3. In Terminal B:
    ```powershell
    python scripts/export_data.py
+   ```
+   ```powershell
    dir exports
    ```
-   **Expect:** `participants.csv`, `checkins.csv`, `sessions.csv`, `messages.csv`. Each opens correctly in Excel (columns separated, no garbled characters).
+   **Expect:** `participants.csv`, `checkins.csv`, `sessions.csv`, `messages.csv` (plus `classifier_results.csv` from Phase 6), and the row counts printed. Open each in Excel: columns are separated correctly and text looks right (no `Ã©`-style garbling).
+4. (Extra) Database check of the reflection link:
+   ```powershell
+   python -c "import sqlite3; c=sqlite3.connect('data/stillspace.db'); [print(r) for r in c.execute('select id, type, session_id, answers_json from checkins where type=? order by id desc limit 3', ('post_session',))]"
+   ```
+   **Expect:** rows with your `session_id` and answers like `{"comfort": 7, "validation": 8, "useful": "Yes"}`.
 
 ---
 
@@ -645,6 +667,7 @@ Things the spec leaves open or gets slightly wrong. In each case I picked the si
 | D-49 | **Rate limits in memory**: **40 messages per participant per hour, 700 per day in total** (your numbers), 10 sign-ins per IP per minute; **the safety reply is never limited**. | Protects the OpenRouter budget and blocks abuse without a new framework. |
 | D-50 | **Hosting: Railway or Render** (both documented, no Docker). **Ages: 18+ and under-18 with guardian consent** (your choice): an age question at consent; under-18 needs an extra guardian-consent tick; stored as `age_group`, `guardian_consent`, `consent_at`; signed guardian forms are collected outside the app (checklist). | Spec section 16 requires guardian consent for under-18s; a tick only records the confirmation, the real consent is the signed form. |
 | D-51 | **No safety alert channel** (your choice). Instead `scripts/safety_report.py` (code, time and flag type; no message text) plus a required written review routine in the deployment checklist. | Simpler and no third-party chat service; the trade-off is slower follow-up, so the review routine must be agreed before launch. The participant still gets the helplines instantly. |
+| D-52 | Session endpoints in a new `routes/sessions.py`; `chat_seconds` = chat opened → Finish (server clock, may include pauses; updated if finished again); summary bars = share of replies; summary shows the **latest saved PHQ-9** from the server; "View summary" saves the reflection (even with skipped answers, like D-28), "Skip for now" saves nothing; exports overwrite. | Keeps `chat.py` near ~150 lines; one server-side source of truth for the summary (spec 12); consistent "completion is explicit" rule. |
 
 ---
 

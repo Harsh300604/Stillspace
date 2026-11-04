@@ -186,6 +186,12 @@ Each entry has:
 ### A gap found while testing
 - "I just want to sleep and never wake up" slipped past the keywords. It would only have been caught by the classifier's risk check. A keyword rule was added, so the deterministic net catches it too. *Lesson: write tests for indirect phrasings, not only the obvious ones.*
 
+### Ending a session and the summary (Phase 8, D-52)
+- **Finish & reflect** ends the session on the server; **View summary** saves the reflection; **Skip** saves nothing.
+- **The summary page is built by the server**, from what was stored, not from what the browser remembers. That way it matches the exported data exactly.
+- **Chat time uses the server clock**, from opening the chat to Finish. *Teaching note:* ask the student what "chat time" should mean for the research. Including pauses is the simple choice; measuring only active typing would need more design.
+- **Export:** one CSV per table, with the Excel marker so Hinglish/Devanagari text displays correctly. The files contain participant data and are git-ignored.
+
 ---
 
 ## 9. Going online: Supabase and online safety (Phase 11, planned)
@@ -229,4 +235,5 @@ Each entry has:
 | 4 Nov 2026 | Phase 5 | Safety section updated (D-40) |
 | 4 Nov 2026 | Phase 6 | Classifier section added (D-41); first real result and no-tuning decision (D-42); qwen3:8b comparison and hybrid-model fix (D-43) |
 | 4 Nov 2026 | Phase 7 | Strategy-aware replies section added (D-44); check-5 method (D-45) |
+| 4 Nov 2026 | Phase 8 | Summary, reflection and export (D-52) |
 | 4 Nov 2026 | after Phase 7 | Deployment plan: Supabase + online safety as Phase 11 (D-46 to D-50); developer's choices on hosting, ages, limits, no alerts (D-49 to D-51) |

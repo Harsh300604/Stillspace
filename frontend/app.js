@@ -6,8 +6,8 @@
   layout and behaviour are kept. Every change required by spec section 12 is
   marked with a "CHANGED:" comment so it is easy to compare with the mockup.
 
-  Phase 7 status: everything uses the server, including strategy-aware replies
-  and the explainability panel (used strategy + emotion, intensity, stage).
+  Phase 8 status: everything uses the server, including strategy-aware replies,
+  the explainability panel, session end, the reflection and the summary page.
 */
 
 const $ = id => document.getElementById(id);
@@ -65,6 +65,7 @@ let sessionId = null;   // id from POST /api/sessions; a new one for each "New s
 let chatError = null;   // {message, text} after a failed send, shown with a Retry button
 let sessionSafetyFlag = false;  // true once any reply in this session was a safety response (spec 11.5)
 let lastReply = null;  // {meta, classified, requested} of the last reply, for the explainability panel
+let summaryData = null;  // GET /api/sessions/{id}/summary for the summary page
 
 // Mood buttons are stored by name so the database is readable (same order as the buttons).
 const MOOD_LABELS = ['Low', 'Unsettled', 'Neutral', 'Okay', 'Good'];
@@ -338,9 +339,9 @@ function goToNextDue() {
 
 // Sends one check-in. Only the server's answer updates `status`, so the
 // Due/Done labels always show what is really stored.
-async function saveCheckin(type, answers) {
+async function saveCheckin(type, answers, extra = {}) {
   try {
-    const result = await api('/api/checkins', { method: 'POST', body: { code: participantCode, type, answers } });
+    const result = await api('/api/checkins', { method: 'POST', body: { code: participantCode, type, answers, ...extra } });
     status = result.status;
     return result;
   } catch (error) {
@@ -350,10 +351,10 @@ async function saveCheckin(type, answers) {
 }
 
 // Wraps the three "Finish/Save" buttons so a double click saves only once.
-async function finishCheckin(type, answers) {
+async function finishCheckin(type, answers, extra = {}) {
   if (finishing) return null;
   finishing = true;
-  try { return await saveCheckin(type, answers); } finally { finishing = false; }
+  try { return await saveCheckin(type, answers, extra); } finally { finishing = false; }
 }
 
 async function saveSetupAnswers() {
@@ -512,7 +513,7 @@ function chat() {
   $('form').onsubmit = e => { e.preventDefault(); send(); };
   $('input').onkeydown = e => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); send(); } };
   document.querySelectorAll('#chips button').forEach(b => b.onclick = () => { $('input').value = b.textContent; send(); });
-  $('finish').onclick = advance;
+  $('finish').onclick = finishChat;
   $('returnSurvey').onclick = () => go(1);
   ensureSession().catch(error => notify(error.message));  // CHANGED: one server session per chat
 }
@@ -523,6 +524,15 @@ async function ensureSession() {
   const result = await api('/api/sessions', { method: 'POST', body: { code: participantCode } });
   sessionId = result.session_id;
   return sessionId;
+}
+
+// CHANGED: "Finish & reflect" ends the session on the server (POST /end), then
+// opens the reflection. If ending fails, the reflection still opens.
+async function finishChat() {
+  if (sessionId) {
+    try { await api(`/api/sessions/${sessionId}/end`, { method: 'POST' }); } catch (error) { notify(error.message); }
+  }
+  advance();
 }
 
 // Badge text for a reply: safety and fallback replies say so; otherwise the strategy used (Phase 7).
@@ -593,18 +603,65 @@ function reflection() {
   $('view').innerHTML = mobile() + `<div class="survey"><div class="surveybar"><strong>Your reflection · optional</strong><button id="skipReflection">Skip for now →</button></div><h2>How did that feel?</h2><p class="sub">Sample post-session questions, ready for your final study wording.</p><div class="card">${scaleQuestion('comfort', 'How comfortable did you feel sharing your thoughts?', 'Not at all', 'Very comfortable', true, post, 'post')}${scaleQuestion('validation', 'How understood or validated did you feel?', 'Not at all', 'Very much', true, post, 'post')}${yesNo('useful', 'Did you find this conversation helpful?', 'post', post)}<div class="actions"><button id="backChat">← Back to chat</button><button class="primary" id="viewSummary">View summary →</button></div></div></div>`;
   bindAnswers();
   $('backChat').onclick = () => go(2);
-  $('viewSummary').onclick = $('skipReflection').onclick = advance;
+  $('viewSummary').onclick = saveReflection;  // CHANGED: saved as a post_session check-in
+  $('skipReflection').onclick = advance;       // skipping saves nothing
   renderContext();
+}
+
+// CHANGED: "View summary" stores the reflection answers as a post_session
+// check-in linked to this session (spec section 12). Skip saves nothing.
+async function saveReflection() {
+  if (sessionId && status) {
+    const result = await finishCheckin('post_session', { ...post }, { session_id: sessionId });
+    if (!result) return;  // the error is already shown; stay so they can retry or skip
+  }
+  advance();
 }
 
 // ---------- Step 4: summary ----------
 
-// CHANGED: strategy bars from /api/config; preview-day card only in demo mode;
-// wording no longer says "model example" or "does not save personal data".
+// CHANGED: the summary comes from GET /api/sessions/{id}/summary (spec section 12):
+// server chat time, message count, strategy counts, latest PHQ-9 and reflection.
 function summary() {
-  const count = messages.filter(m => m.role === 'user').length;
+  if (!sessionId) { summaryData = null; drawSummary(); return; }
+  $('view').innerHTML = mobile() + '<div class="survey"><p class="sub" role="status">Loading your session summary…</p></div>';
+  renderContext();
+  const token = epoch;
+  api(`/api/sessions/${sessionId}/summary`).then(data => {
+    if (token !== epoch || step !== 4) return;
+    summaryData = data;
+    drawSummary();
+  }).catch(error => {
+    if (step !== 4) return;
+    $('view').innerHTML = mobile() + `<div class="survey"><div class="card"><strong>The summary could not be loaded</strong><p class="sub">${esc(error.message)}</p><button class="primary" id="retrySummary">Try again</button></div></div>`;
+    $('retrySummary').onclick = summary;
+  });
+}
+
+// The mockup's PHQ-9 score box, filled from the server's latest saved PHQ-9.
+function latestPhqBox(latest) {
+  const complete = latest && latest.complete;
+  const total = complete ? latest.total : null;
+  const title = complete ? total + ' / 27' : '— / 27';
+  const tag = latest ? `Latest · ${esc(latest.date)}` : 'No PHQ-9 yet';
+  const text = !latest ? 'No two-week check-in has been saved yet.' : complete ? `${esc(latest.band.charAt(0).toUpperCase() + latest.band.slice(1))} symptom range · screening result, not a diagnosis.` : 'Incomplete · no severity result. Unanswered questions are not scored as zero.';
+  return `<div class="scorebox"><div class="row" style="justify-content:space-between"><div><div class="eyebrow">Depression score · PHQ-9</div><strong>${title}</strong></div><span class="tag">${tag}</span></div><div class="gradient">${complete ? `<i class="marker" style="--position:${Math.max(1, Math.min(99, total / 27 * 100))}%"></i>` : ''}</div><div class="ends"><span>0 · Minimal</span><span>27 · Severe</span></div><p class="sub">${text}</p></div>`;
+}
+
+function reflectionLine(r) {
+  if (!r) return 'Reflection skipped.';
+  const show = v => (v === undefined || v === null ? '–' : esc(v));
+  return `Your reflection: comfortable ${show(r.comfort)}/10 · understood ${show(r.validation)}/10 · helpful: ${show(r.useful)}.`;
+}
+
+function drawSummary() {
+  // Without a server session (e.g. the chat was never opened) show what the page knows.
+  const d = summaryData || { chat_seconds: Math.floor(elapsed / 1000), message_count: 0, strategy_counts: {}, requested_strategy: preferred, last_used_strategy: implemented, latest_phq: status ? status.latest_phq : null, reflection: null };
+  const counts = d.strategy_counts || {};
+  const replies = Object.values(counts).reduce((a, b) => a + b, 0);
+  const safetyLine = counts.Safety ? `<p class="tiny">Safety responses: ${counts.Safety}.</p>` : '';
   const previewCard = appConfig && appConfig.demo_mode ? `<div class="card"><h3>Preview repeat visits</h3><p class="sub">Demo mode: try the check-in schedules without waiting. This moves the demo date forward; it does not schedule reminders.</p><div class="daycontrols"><button data-visit="0">Same-day login</button><button data-visit="1">Next day</button><button data-visit="14">14 days later</button></div></div>` : '';
-  $('view').innerHTML = mobile() + `<div class="survey"><div class="eyebrow">Session complete</div><h2>Thank you for taking a moment.</h2><p class="sub">A snapshot of your session.</p><div class="split" style="margin-top:28px"><div class="metric"><span class="sub">Conversation time</span><strong>${format(elapsed)}</strong></div><div class="metric"><span class="sub">Messages sent</span><strong>${count}</strong></div></div>${score()}<div class="card"><h3>Support styles explored</h3>${strategies.map(s => { const n = messages.filter(m => m.strategy === s).length; return `<div class="row" style="justify-content:space-between"><span class="sub">${esc(s)}</span><span class="tiny">${n} ${n === 1 ? 'reply' : 'replies'}</span></div><div class="bar"><div style="width:${count ? n / count * 100 : 0}%"></div></div>`; }).join('')}<p class="tiny">Requested style: ${esc(preferred)}. Last style used by the model: ${esc(implemented || 'No reply yet')}. These are separate values.</p></div>${previewCard}<div class="actions"><button id="review">← Review reflection</button><button id="restart" class="primary">Start new session</button></div></div>`;
+  $('view').innerHTML = mobile() + `<div class="survey"><div class="eyebrow">Session complete</div><h2>Thank you for taking a moment.</h2><p class="sub">A snapshot of your session.</p><div class="split" style="margin-top:28px"><div class="metric"><span class="sub">Conversation time</span><strong>${format(d.chat_seconds * 1000)}</strong></div><div class="metric"><span class="sub">Messages sent</span><strong>${d.message_count}</strong></div></div>${latestPhqBox(d.latest_phq)}<div class="card"><h3>Support styles explored</h3>${strategies.map(s => { const n = counts[s] || 0; return `<div class="row" style="justify-content:space-between"><span class="sub">${esc(s)}</span><span class="tiny">${n} ${n === 1 ? 'reply' : 'replies'}</span></div><div class="bar"><div style="width:${replies ? n / replies * 100 : 0}%"></div></div>`; }).join('')}${safetyLine}<p class="tiny">Requested style: ${esc(d.requested_strategy || 'Automatic')}. Last style used by the model: ${esc(d.last_used_strategy || 'No reply yet')}. These are separate values.</p><p class="tiny">${reflectionLine(d.reflection)}</p></div>${previewCard}<div class="actions"><button id="review">← Review reflection</button><button id="restart" class="primary">Start new session</button></div></div>`;
   $('review').onclick = () => go(3);
   $('restart').onclick = reset;
   document.querySelectorAll('[data-visit]').forEach(b => b.onclick = () => previewVisit(+b.dataset.visit));
@@ -618,14 +675,14 @@ function reset() {
   if (messages.length && !confirm('Start a new session? Your check-ins stay saved; this conversation will be cleared from the screen.')) return;
   epoch++;
   messages = []; post = {}; implemented = null; busy = false; started = null; elapsed = 0;
-  sessionId = null; chatError = null; sessionSafetyFlag = false; lastReply = null;  // the next chat creates a fresh server session
+  sessionId = null; chatError = null; sessionSafetyFlag = false; lastReply = null; summaryData = null;  // the next chat creates a fresh server session
   enterChat();
 }
 
 // CHANGED: forget the code in this tab and go back to the consent page.
 function switchParticipant() {
   clearStoredCode();
-  participantCode = ''; status = null; sessionId = null; chatError = null; sessionSafetyFlag = false; lastReply = null;
+  participantCode = ''; status = null; sessionId = null; chatError = null; sessionSafetyFlag = false; lastReply = null; summaryData = null;
   epoch++;
   step = unlocked = 0; consent = false; mood = null; preferred = 'Automatic'; implemented = null; tab = 'fortnight';
   messages = []; phq = {}; extra = {}; daily = {}; setup = {}; post = {}; busy = false;
