@@ -5,6 +5,7 @@
     - CSS and JS moved to /static/styles.css and /static/app.js
     - sidebar box and About dialog reworded to describe storage and AI use accurately
     - #view is now a div inside .center so the footer disclaimer can sit under every step
+    - #participantbox (signed-in code + Switch participant link) added under the steps
 -->
 <html lang="en">
 <head>
@@ -25,6 +26,7 @@
       <div class="caption" style="margin:0 12px 12px">Your session</div>
       <nav id="nav"></nav>
     </div>
+    <div id="participantbox" hidden></div>
     <div class="sessionbox">
       <span class="dot"></span><strong style="font-size:.83rem">Research prototype</strong>
       <p class="sub">Check-ins, a supportive conversation and a short reflection.</p>

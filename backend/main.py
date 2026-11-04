@@ -9,13 +9,18 @@ from fastapi import FastAPI
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from backend import config
-from backend.routes import config_route
+from backend import config, db
+from backend.routes import checkins, config_route, participants
+
+# Create any missing tables before the first request (safe to repeat every start).
+db.create_tables()
 
 app = FastAPI(title="Stillspace", version=config.APP_VERSION)
 
 # Each routes/ file owns one group of endpoints; main.py just plugs them in.
 app.include_router(config_route.router)
+app.include_router(participants.router)
+app.include_router(checkins.router)
 
 # /static/styles.css, /static/app.js, ... come straight from the frontend folder.
 app.mount("/static", StaticFiles(directory=config.FRONTEND_DIR), name="static")

@@ -6,9 +6,8 @@
   layout and behaviour are kept. Every change required by spec section 12 is
   marked with a "CHANGED:" comment so it is easy to compare with the mockup.
 
-  Phase 2 status: strategies come from the server; participant code is checked
-  in the browser. Saving check-ins (Phase 3) and real chat replies (Phase 4)
-  are not connected yet. Look for "STUB (Phase N)" comments.
+  Phase 3 status: strategies, participants and check-ins use the server.
+  Real chat replies (Phase 4) are not connected yet. Look for "STUB (Phase N)".
 */
 
 const $ = id => document.getElementById(id);
@@ -60,15 +59,27 @@ function loadStoredCode() {
 function storeCode(code) {
   try { sessionStorage.setItem(CODE_STORAGE_KEY, code); } catch (e) { /* ignore */ }
 }
+function clearStoredCode() {
+  try { sessionStorage.removeItem(CODE_STORAGE_KEY); } catch (e) { /* ignore */ }
+}
 
 let participantCode = loadStoredCode();
+
+// CHANGED: the participant's status from the server (what is due, latest PHQ-9,
+// saved answers). null means nobody is signed in yet.
+let status = null;
+let finishing = false;  // stops a double click from saving a check-in twice
+
+// Mood buttons are stored by name so the database is readable (same order as the buttons).
+const MOOD_LABELS = ['Low', 'Unsettled', 'Neutral', 'Okay', 'Good'];
 
 // ---------- App state (same variables as the mockup) ----------
 
 let step = 0, unlocked = 0, consent = false, font = 16, preferred = 'Automatic', implemented = null,
     mood = null, tab = 'fortnight', messages = [], phq = {}, extra = {}, daily = {}, setup = {}, post = {},
-    busy = false, epoch = 0, started = null, elapsed = 0, day = 0, setupDone = false,
-    lastDaily = null, lastFortnight = null;
+    busy = false, epoch = 0, started = null, elapsed = 0;
+// CHANGED: the mockup's day / setupDone / lastDaily / lastFortnight scheduling
+// variables are gone: the server decides what is due (see `status`).
 
 // ---------- Talking to the server (CHANGED: new, spec section 12) ----------
 
@@ -146,7 +157,17 @@ function go(n) {
 function advance() { unlocked = Math.max(unlocked, step + 1); go(step + 1); }
 function enterChat() { unlocked = Math.max(unlocked, 2); go(2); }
 
+// CHANGED: shows who is signed in, with a "Switch participant" link (spec section 12).
+function renderParticipantBox() {
+  const box = $('participantbox');
+  box.hidden = !status;  // hidden, not just empty, so the sidebar spacing matches the mockup
+  if (!status) { box.innerHTML = ''; return; }
+  box.innerHTML = `<p class="tiny" style="margin:0 12px">Signed in as ${esc(status.code)}<br><button type="button" class="textbutton" id="switchParticipant">Switch participant</button></p>`;
+  $('switchParticipant').onclick = switchParticipant;
+}
+
 function nav() {
+  renderParticipantBox();
   $('nav').innerHTML = names.map((n, i) => `<button class="${i === step ? 'active' : ''}" ${i > unlocked ? 'disabled' : ''} data-step="${i}" ${i === step ? 'aria-current="step"' : ''}><span class="stepnum">${i < step ? '✓' : i + 1}</span>${n}</button>`).join('');
   document.querySelectorAll('[data-step]').forEach(b => b.onclick = () => go(+b.dataset.step));
   $('pagetitle').textContent = names[step];
@@ -154,8 +175,14 @@ function nav() {
 
 // ---------- Right rail: risk, mood, strategies ----------
 
+// CHANGED: also "Follow-up needed" when the latest saved PHQ-9 had item 9 > 0 (spec 11.5).
+// Phase 5 adds safety replies in this session to the same rule.
+function followUpNeeded() {
+  return phq[8] > 0 || Boolean(status && status.latest_phq && status.latest_phq.item9_flag);
+}
+
 function risk() {
-  const flag = phq[8] > 0;
+  const flag = followUpNeeded();
   return `<div class="riskbox"><div class="row" style="justify-content:space-between"><strong>Risk indicator</strong><span class="tag">Prototype</span></div><div class="gradient">${flag ? '<i class="marker" style="--position:92%"></i>' : ''}</div><div class="ends"><span>Lower concern</span><span>Higher concern</span></div><div class="riskstatus">${flag ? 'Follow-up needed' : 'Not assessed'}</div><p class="tiny">${flag ? 'A response to PHQ-9 item 9 needs a human follow-up. This is not a calculated risk level.' : 'No validated safety assessment is connected. Mood, stress and a low PHQ-9 score cannot establish safety.'}</p><div class="tiny">PHQ-9: ${Object.keys(phq).length}/9 answered · chat assessment not connected</div></div>`;
 }
 
@@ -173,7 +200,7 @@ function renderContext() {
   // CHANGED: "About this demo" -> "About Stillspace".
   $('rail').innerHTML = risk() + `<section>${moodHtml()}</section><section>${support()}</section><section><h3>Session at a glance</h3><div class="row" style="justify-content:space-between"><span class="sub">Chat time</span><strong data-clock>${format(elapsed + (started ? Date.now() - started : 0))}</strong></div><div class="row" style="justify-content:space-between"><span class="sub">Messages sent</span><strong>${messages.filter(m => m.role === 'user').length}</strong></div></section><button data-help style="width:100%">About Stillspace ↗</button>`;
   const mobileBox = $('mobilecontext');
-  if (mobileBox) mobileBox.innerHTML = `<summary>Risk: ${phq[8] > 0 ? 'follow-up needed' : 'not assessed'} · Support & mood ▾</summary><div class="contextbody">${risk()}${moodHtml()}${support('mobilepreferred')}</div>`;
+  if (mobileBox) mobileBox.innerHTML = `<summary>Risk: ${followUpNeeded() ? 'follow-up needed' : 'not assessed'} · Support & mood ▾</summary><div class="contextbody">${risk()}${moodHtml()}${support('mobilepreferred')}</div>`;
   bindContext();
 }
 
@@ -182,6 +209,7 @@ function bindContext() {
     mood = +b.dataset.mood;
     renderContext();
     if (step === 1 && tab === 'daily') survey();
+    saveMood();  // CHANGED: the sidebar and daily mood write the same daily check-in
   });
   ['preferred', 'mobilepreferred', 'setupstyle'].forEach(id => {
     const e = $(id);
@@ -192,6 +220,7 @@ function bindContext() {
         setup.preferred = preferred;
         renderContext();
         if ($('setupstyle')) $('setupstyle').value = preferred;
+        savePreference();  // CHANGED: "Requested by you" is saved (PATCH)
       };
     }
   });
@@ -214,11 +243,11 @@ function mobile() { return '<details class="mobilecontext" id="mobilecontext"></
 
 // CHANGED: participant code field added; wording made accurate (spec section 12).
 function welcome() {
-  $('view').innerHTML = `<div class="intro"><div class="eyebrow">Welcome · take your time</div><h1>A space to talk.<br>A moment to breathe.</h1><p class="sub">Explore different styles of support, with space to check in and reflect.</p><div class="journey"><article><span class="symbol">☷</span><strong>Your check-ins</strong><p>Optional questions, at your pace.</p></article><article><span class="symbol">◌</span><strong>Your conversation</strong><p>A place to share what is on your mind.</p></article><article><span class="symbol">❧</span><strong>Your reflection</strong><p>A small moment to look back.</p></article></div><div class="card"><strong>Before we begin</strong><p class="sub">This is a student research prototype. Your answers and messages are saved on this computer for the research project, linked to your participant code. ${appConfig && appConfig.mock_mode ? 'Replies are mock replies for now, not from an AI model.' : 'Replies are generated by an AI model.'} PHQ-9 answers give a screening score; they are not a diagnosis or a safety assessment. This is not therapy or an emergency service.</p><label class="labelblock" for="pcode">Participant code</label><input class="field" id="pcode" autocomplete="off" spellcheck="false" maxlength="20" placeholder="e.g. P001" value="${esc(participantCode)}" aria-describedby="pcodehint"><label class="check"><input type="checkbox" id="agree" ${consent ? 'checked' : ''}><span>I understand this is a research prototype, not therapy or an emergency service, and I agree to take part.</span></label><p class="tiny codehint" id="pcodehint" aria-live="polite"></p><div class="row"><button class="primary" id="begin">Explore check-ins →</button><button id="direct">Skip to chat →</button></div><p class="tiny">You can skip any question. Chat is not an emergency service.</p></div></div>`;
+  $('view').innerHTML = `<div class="intro"><div class="eyebrow">Welcome · take your time</div><h1>A space to talk.<br>A moment to breathe.</h1><p class="sub">Explore different styles of support, with space to check in and reflect.</p><div class="journey"><article><span class="symbol">☷</span><strong>Your check-ins</strong><p>Optional questions, at your pace.</p></article><article><span class="symbol">◌</span><strong>Your conversation</strong><p>A place to share what is on your mind.</p></article><article><span class="symbol">❧</span><strong>Your reflection</strong><p>A small moment to look back.</p></article></div><div class="card"><strong>Before we begin</strong><p class="sub">This is a student research prototype. Your answers and messages are saved on this computer for the research project, linked to your participant code. ${appConfig && appConfig.mock_mode ? 'Replies are mock replies for now, not from an AI model.' : 'Replies are generated by an AI model.'} PHQ-9 answers give a screening score; they are not a diagnosis or a safety assessment. This is not therapy or an emergency service.</p><label class="labelblock" for="pcode">Participant code</label><input class="field" id="pcode" autocomplete="off" spellcheck="false" maxlength="20" placeholder="e.g. P001" value="${esc(participantCode)}" aria-describedby="pcodehint"><label class="check"><input type="checkbox" id="agree" ${consent ? 'checked' : ''}><span>I understand this is a research prototype, not therapy or an emergency service, and I agree to take part.</span></label><p class="tiny codehint" id="pcodehint" aria-live="polite"></p><div class="row"><button class="primary" id="begin">Continue →</button><button id="direct">Skip to chat →</button></div><p class="tiny">You can skip any question. Chat is not an emergency service.</p></div></div>`;
   $('agree').onchange = e => { consent = e.target.checked; updateConsentButtons(); };
   $('pcode').oninput = updateConsentButtons;
-  $('begin').onclick = () => { if (acceptCode()) advance(); };   // STUB (Phase 3): will route by /status
-  $('direct').onclick = () => { if (acceptCode()) enterChat(); };
+  $('begin').onclick = () => login('route');
+  $('direct').onclick = () => login('chat');
   updateConsentButtons();
 }
 
@@ -237,13 +266,127 @@ function updateConsentButtons() {
   $('begin').disabled = $('direct').disabled = !(consent && codeOk);
 }
 
-// Saves the code for this browser tab. STUB (Phase 3): will also call POST /api/participants.
-function acceptCode() {
+// CHANGED: sign in with POST /api/participants (creates the code if new), keep
+// the code for this tab, then go to whatever is due (spec section 12).
+async function login(target) {
   const code = $('pcode').value.trim();
-  if (!consent || !CODE_PATTERN.test(code)) { updateConsentButtons(); return false; }
-  participantCode = code.toUpperCase();
-  storeCode(participantCode);
-  return true;
+  if (!consent || !CODE_PATTERN.test(code)) { updateConsentButtons(); return; }
+  $('begin').disabled = $('direct').disabled = true;
+  try {
+    const result = await api('/api/participants', { method: 'POST', body: { code } });
+    participantCode = result.status.code;
+    storeCode(participantCode);
+    applyStatus(result.status);
+    if (target === 'chat') enterChat(); else routeByStatus();
+  } catch (error) {
+    notify(error.message);
+    updateConsentButtons();
+  }
+}
+
+// ---------- Server status and saving (CHANGED: new, spec section 12) ----------
+
+// Copy what the server knows into the page: preference, today's mood and the
+// saved answers. Used after sign-in, refresh and the demo day buttons.
+function applyStatus(newStatus) {
+  status = newStatus;
+  preferred = newStatus.preferred_strategy;
+  const moodIndex = MOOD_LABELS.indexOf(newStatus.today_mood);
+  mood = moodIndex >= 0 ? moodIndex : null;
+  daily = { ...newStatus.answers.daily };
+  delete daily.mood;  // mood has its own variable, like in the mockup
+  const fortnight = newStatus.answers.fortnightly || {};
+  phq = { ...(fortnight.phq || {}) };
+  extra = { ...(fortnight.extra || {}) };
+  setup = { ...newStatus.answers.setup };
+}
+
+// Order from spec section 12: setup, then daily, then the two-week check-in.
+function nextDueTab() {
+  if (!status) return null;
+  if (!status.setup_done) return 'setup';
+  if (status.daily_due) return 'daily';
+  if (status.fortnightly_due) return 'fortnight';
+  return null;
+}
+
+function routeByStatus() {
+  const dueTab = nextDueTab();
+  if (dueTab) { tab = dueTab; unlocked = Math.max(unlocked, 1); go(1); }
+  else enterChat();
+}
+
+function goToNextDue() {
+  const dueTab = nextDueTab();
+  if (dueTab) { tab = dueTab; survey(); window.scrollTo(0, 0); }
+  else enterChat();
+}
+
+// Sends one check-in. Only the server's answer updates `status`, so the
+// Due/Done labels always show what is really stored.
+async function saveCheckin(type, answers) {
+  try {
+    const result = await api('/api/checkins', { method: 'POST', body: { code: participantCode, type, answers } });
+    status = result.status;
+    return result;
+  } catch (error) {
+    notify(error.message);
+    return null;
+  }
+}
+
+// Wraps the three "Finish/Save" buttons so a double click saves only once.
+async function finishCheckin(type, answers) {
+  if (finishing) return null;
+  finishing = true;
+  try { return await saveCheckin(type, answers); } finally { finishing = false; }
+}
+
+async function saveSetupAnswers() {
+  const result = await finishCheckin('setup', { dob: setup.dob, preferred: setup.preferred });
+  if (result) { preferred = status.preferred_strategy; goToNextDue(); }
+}
+
+async function saveDailyAnswers() {
+  // null tells the server to remove an answer that was skipped after being saved.
+  const answers = { ...daily, dailySupport: daily.dailySupport ?? null, mood: mood === null ? null : MOOD_LABELS[mood] };
+  if (await finishCheckin('daily', answers)) goToNextDue();
+}
+
+async function saveFortnightlyAnswers() {
+  const result = await finishCheckin('fortnightly', { phq, extra });
+  if (!result) return;
+  const c = result.checkin;
+  notify(c.phq_complete ? `Saved. PHQ-9 total ${c.phq_total} (${c.phq_band}).` : 'Saved. The PHQ-9 is incomplete, so no total is stored.');
+  goToNextDue();
+}
+
+// Mood buttons save immediately (upsert of today's daily check-in).
+async function saveMood() {
+  if (!status) return;  // not signed in yet: nothing to save to
+  const result = await saveCheckin('daily', { mood: mood === null ? null : MOOD_LABELS[mood] });
+  if (result && step === 1) survey();  // refresh the Due/Done labels
+}
+
+async function savePreference() {
+  if (!status) return;
+  try {
+    status = await api(`/api/participants/${encodeURIComponent(participantCode)}`, { method: 'PATCH', body: { preferred_strategy: preferred } });
+  } catch (error) {
+    notify(error.message);
+  }
+}
+
+// Demo buttons: move this participant's demo date on the server, then reload status.
+async function previewVisit(days) {
+  try {
+    applyStatus(await api('/api/demo/advance', { method: 'POST', body: { code: participantCode, days } }));
+    tab = status.fortnightly_due ? 'fortnight' : 'daily';  // same choice as the mockup
+    unlocked = Math.max(unlocked, 1);
+    go(1);
+  } catch (error) {
+    notify(error.message);
+  }
 }
 
 // ---------- Step 1: check-ins ----------
@@ -287,27 +430,32 @@ function dailyHtml() {
   return `<div class="card"><span class="tag">Daily / at login</span><h2 style="font-size:1.65rem">How is today feeling?</h2><p class="sub">A short check-in. The sidebar mood control updates the same answer.</p><div id="dailymoods">${moodHtml()}</div><button class="textbutton" id="skipMood">Skip for now</button>${yesNo('dailySupport', 'Would you like some support today?', 'daily', daily)}<p class="tiny">Sample daily question · replace with your final wording.</p><div class="actions"><button class="primary" id="completeDaily">Finish daily check-in →</button></div></div>`;
 }
 
-// STUB (Phase 3): due/done is still worked out in the browser; Phase 3 reads it from /status.
-// CHANGED: "Scheduling is simulated in this open page" and "in this demo" removed;
-// the preview-day label only shows in demo mode.
+// CHANGED: Due/Done comes from the server's status; "Scheduling is simulated
+// in this open page" and "in this demo" removed; the preview-day label only
+// shows in demo mode; every Finish/Save button stores the check-in.
 function survey() {
-  const pendingSetup = !setupDone;
-  const pendingDaily = lastDaily !== day;
-  const pendingFortnight = lastFortnight === null || day - lastFortnight >= 14;
-  const dayLabel = appConfig && appConfig.demo_mode ? ` · preview day ${day + 1}` : '';
-  $('view').innerHTML = mobile() + `<div class="survey"><div class="surveybar"><div><strong>Your check-ins</strong><div class="sub">All optional${dayLabel}</div></div><button class="primary" id="skipChat">Skip to chat →</button></div><div class="tabs" role="tablist" aria-label="Check-in frequency">${[['fortnight', 'Every two weeks', pendingFortnight], ['daily', 'Daily / at login', pendingDaily], ['setup', 'Once at setup', pendingSetup]].map(([id, t, due]) => `<button role="tab" id="tab-${id}" aria-selected="${tab === id}" aria-controls="surveycontent" data-tab="${id}">${t} <span class="tiny">${due ? '· Due' : '· Done'}</span></button>`).join('')}</div><p class="tiny">Due and Done follow your previous check-ins. Skips remain unanswered; completion is an explicit action.</p><div id="surveycontent" role="tabpanel" aria-labelledby="tab-${tab}">${tab === 'fortnight' ? phqHtml() : tab === 'daily' ? dailyHtml() : setupHtml()}</div><div class="actions"><button id="surveyBack">← Back</button><button class="primary" id="surveyNext">${tab === 'fortnight' ? 'Finish two-week check-in →' : tab === 'daily' ? 'Continue to setup →' : 'Continue to chat →'}</button></div><p class="tiny">Finishing with skipped items leaves the PHQ-9 incomplete. Skipped questions can be revisited at any time.</p></div>`;
+  const pendingSetup = !status || !status.setup_done;
+  const pendingDaily = !status || status.daily_due;
+  const pendingFortnight = !status || status.fortnightly_due;
+  const dayLabel = appConfig && appConfig.demo_mode && status ? ` · preview day ${status.demo_day_offset + 1} (${status.local_date})` : '';
+  $('view').innerHTML = mobile() + `<div class="survey"><div class="surveybar"><div><strong>Your check-ins</strong><div class="sub">All optional${dayLabel}</div></div><button class="primary" id="skipChat">Skip to chat →</button></div><div class="tabs" role="tablist" aria-label="Check-in frequency">${[['fortnight', 'Every two weeks', pendingFortnight], ['daily', 'Daily / at login', pendingDaily], ['setup', 'Once at setup', pendingSetup]].map(([id, t, due]) => `<button role="tab" id="tab-${id}" aria-selected="${tab === id}" aria-controls="surveycontent" data-tab="${id}">${t} <span class="tiny">${due ? '· Due' : '· Done'}</span></button>`).join('')}</div><p class="tiny">Due and Done follow your previous check-ins. Skips remain unanswered; completion is an explicit action.</p><div id="surveycontent" role="tabpanel" aria-labelledby="tab-${tab}">${tab === 'fortnight' ? phqHtml() : tab === 'daily' ? dailyHtml() : setupHtml()}</div><div class="actions"><button id="surveyBack">← Back</button><button class="primary" id="surveyNext">${tab === 'fortnight' ? 'Finish two-week check-in →' : tab === 'daily' ? 'Finish daily check-in →' : 'Save setup →'}</button></div><p class="tiny">Finishing with skipped items leaves the PHQ-9 incomplete. Skipped questions can be revisited at any time.</p></div>`;
   $('skipChat').onclick = enterChat;
   $('surveyBack').onclick = () => go(0);
   document.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => { tab = b.dataset.tab; survey(); });
   $('surveyNext').onclick = () => {
-    if (tab === 'fortnight') { lastFortnight = day; tab = 'daily'; survey(); }
-    else if (tab === 'daily') { lastDaily = day; tab = 'setup'; survey(); }
-    else { setupDone = true; enterChat(); }
+    if (tab === 'fortnight') saveFortnightlyAnswers();
+    else if (tab === 'daily') saveDailyAnswers();
+    else saveSetupAnswers();
   };
   if ($('dob')) $('dob').oninput = e => setup.dob = e.target.value;
-  if ($('completeSetup')) $('completeSetup').onclick = () => { setupDone = true; enterChat(); };
-  if ($('completeDaily')) $('completeDaily').onclick = () => { lastDaily = day; tab = setupDone ? 'fortnight' : 'setup'; survey(); };
-  if ($('skipMood')) $('skipMood').onclick = () => { mood = null; survey(); };
+  if ($('completeSetup')) $('completeSetup').onclick = saveSetupAnswers;
+  if ($('completeDaily')) $('completeDaily').onclick = saveDailyAnswers;
+  if ($('skipMood')) $('skipMood').onclick = () => {
+    const wasSaved = status && status.today_mood;
+    mood = null;
+    survey();
+    if (wasSaved) saveMood();  // remove the stored mood too
+  };
   bindAnswers();
   renderContext();
 }
@@ -401,27 +549,32 @@ function reflection() {
 function summary() {
   const count = messages.filter(m => m.role === 'user').length;
   const previewCard = appConfig && appConfig.demo_mode ? `<div class="card"><h3>Preview repeat visits</h3><p class="sub">Demo mode: try the check-in schedules without waiting. This moves the demo date forward; it does not schedule reminders.</p><div class="daycontrols"><button data-visit="0">Same-day login</button><button data-visit="1">Next day</button><button data-visit="14">14 days later</button></div></div>` : '';
-  $('view').innerHTML = mobile() + `<div class="survey"><div class="eyebrow">Session complete</div><h2>Thank you for taking a moment.</h2><p class="sub">A snapshot of your session.</p><div class="split" style="margin-top:28px"><div class="metric"><span class="sub">Conversation time</span><strong>${format(elapsed)}</strong></div><div class="metric"><span class="sub">Messages sent</span><strong>${count}</strong></div></div>${score()}<div class="card"><h3>Support styles explored</h3>${strategies.map(s => { const n = messages.filter(m => m.strategy === s).length; return `<div class="row" style="justify-content:space-between"><span class="sub">${esc(s)}</span><span class="tiny">${n} ${n === 1 ? 'reply' : 'replies'}</span></div><div class="bar"><div style="width:${count ? n / count * 100 : 0}%"></div></div>`; }).join('')}<p class="tiny">Requested style: ${esc(preferred)}. Last style used by the model: ${esc(implemented || 'No reply yet')}. These are separate values.</p></div>${previewCard}<div class="actions"><button id="review">← Review reflection</button><button id="restart" class="primary">Reset demo</button></div></div>`;
+  $('view').innerHTML = mobile() + `<div class="survey"><div class="eyebrow">Session complete</div><h2>Thank you for taking a moment.</h2><p class="sub">A snapshot of your session.</p><div class="split" style="margin-top:28px"><div class="metric"><span class="sub">Conversation time</span><strong>${format(elapsed)}</strong></div><div class="metric"><span class="sub">Messages sent</span><strong>${count}</strong></div></div>${score()}<div class="card"><h3>Support styles explored</h3>${strategies.map(s => { const n = messages.filter(m => m.strategy === s).length; return `<div class="row" style="justify-content:space-between"><span class="sub">${esc(s)}</span><span class="tiny">${n} ${n === 1 ? 'reply' : 'replies'}</span></div><div class="bar"><div style="width:${count ? n / count * 100 : 0}%"></div></div>`; }).join('')}<p class="tiny">Requested style: ${esc(preferred)}. Last style used by the model: ${esc(implemented || 'No reply yet')}. These are separate values.</p></div>${previewCard}<div class="actions"><button id="review">← Review reflection</button><button id="restart" class="primary">Start new session</button></div></div>`;
   $('review').onclick = () => go(3);
   $('restart').onclick = reset;
-  document.querySelectorAll('[data-visit]').forEach(b => b.onclick = () => {
-    day += +b.dataset.visit;
-    if (+b.dataset.visit > 0) { daily = {}; mood = null; }
-    if (+b.dataset.visit >= 14) { phq = {}; extra = {}; }
-    tab = lastFortnight === null || day - lastFortnight >= 14 ? 'fortnight' : 'daily';
-    go(1);
-  });
+  document.querySelectorAll('[data-visit]').forEach(b => b.onclick = () => previewVisit(+b.dataset.visit));
   renderContext();
 }
 
-// STUB (Phase 3/8): still clears everything like the mockup. Later: new chat
-// session for the same participant, keeping check-in history.
+// CHANGED: "New session" keeps the participant and their check-in history and
+// only clears the conversation (spec section 12). STUB (Phase 4): will also
+// create a new chat session on the server.
 function reset() {
-  if ((messages.length || Object.keys(phq).length || Object.keys(setup).length) && !confirm('Reset this demo? Your current answers and messages will be cleared.')) return;
+  if (!status) { switchParticipant(); return; }
+  if (messages.length && !confirm('Start a new session? Your check-ins stay saved; this conversation will be cleared from the screen.')) return;
+  epoch++;
+  messages = []; post = {}; implemented = null; busy = false; started = null; elapsed = 0;
+  enterChat();
+}
+
+// CHANGED: forget the code in this tab and go back to the consent page.
+function switchParticipant() {
+  clearStoredCode();
+  participantCode = ''; status = null;
   epoch++;
   step = unlocked = 0; consent = false; mood = null; preferred = 'Automatic'; implemented = null; tab = 'fortnight';
   messages = []; phq = {}; extra = {}; daily = {}; setup = {}; post = {}; busy = false;
-  started = null; elapsed = 0; day = 0; setupDone = false; lastDaily = null; lastFortnight = null;
+  started = null; elapsed = 0;
   render();
 }
 
@@ -443,11 +596,25 @@ async function start() {
   try {
     appConfig = await api('/api/config');
     strategies = appConfig.strategies.map(s => s.name);
-    render();
   } catch (error) {
     $('view').innerHTML = `<div class="intro"><div class="card"><strong>Stillspace could not start</strong><p class="sub">${esc(error.message)}</p><button class="primary" id="retryStart">Try again</button></div></div>`;
     $('retryStart').onclick = start;
+    return;
   }
+  // CHANGED: a code kept in this tab means the person already consented and
+  // signed in, so a refresh does not log them out (spec section 12).
+  if (participantCode) {
+    try {
+      applyStatus(await api(`/api/participants/${encodeURIComponent(participantCode)}/status`));
+      consent = true;
+      routeByStatus();
+      return;
+    } catch (error) {
+      // Unknown code (e.g. the database was deleted): fall back to the consent page.
+      status = null;
+    }
+  }
+  render();
 }
 
 start();

@@ -39,8 +39,8 @@ Around the chat there are check-ins (setup, daily mood, PHQ-9 every 14 days, pos
 |---|---|---|---|
 | 0 | Write this plan | `implementation.md` | ✅ Approved |
 | 1 | Skeleton and config, D: drive setup | folders, `requirements.txt`, `.env.example`, `.gitignore`, `backend/config.py`, `backend/main.py`, `backend/routes/config_route.py`, `backend/data/strategies_4.json`, `backend/data/strategies_esconv8.json`, placeholder `frontend/index.html`, `docs/mockup/Stillspace-2.html` | ✅ Done – checks 1–5 passed |
-| 2 | Frontend port | `frontend/index.html`, `frontend/styles.css`, `frontend/app.js` | 🔨 Built – waiting for your checks |
-| 3 | Database, participants, check-ins | `backend/db.py`, `backend/checkins.py`, `backend/routes/participants.py`, `backend/routes/checkins.py`, demo endpoint, `backend/main.py`, `frontend/app.js` | ⬜ Not started |
+| 2 | Frontend port | `frontend/index.html`, `frontend/styles.css`, `frontend/app.js` | ✅ Done – checks passed |
+| 3 | Database, participants, check-ins | `backend/db.py`, `backend/checkins.py`, `backend/routes/participants.py`, `backend/routes/checkins.py`, demo endpoint, `backend/main.py`, `frontend/app.js`, `frontend/index.html` | 🔨 Built – waiting for your checks |
 | 4 | LLM client, mock mode, basic chat | `backend/llm.py`, `backend/mock.py`, `backend/routes/chat.py`, `backend/data/prompts/plain_system.txt`, `frontend/app.js` | ⬜ Not started |
 | 5 | Safety layer | `backend/safety.py`, `backend/data/crisis_keywords.json`, `backend/data/prompts/crisis_response.txt`, `eval/safety_prompts.csv`, `backend/routes/chat.py`, `backend/routes/checkins.py`, `frontend/app.js`, `frontend/styles.css` (safety badge only) | ⬜ Not started |
 | 6 | Strategy classifier | `backend/classifier.py`, `backend/data/prompts/classifier.txt`, strategy JSON review, `backend/mock.py`, `eval/test_messages.csv`, `scripts/eval_classifier.py` | ⬜ Not started |
@@ -150,7 +150,7 @@ The API key is **never** included.
 
 **Goal:** the mockup served by FastAPI, looking identical, with only the section 12 changes that don't need a database yet.
 
-**Status:** 🔨 Built – waiting for your checks.
+**Status:** ✅ Done. You passed checks 1–6 on Windows (4 Nov 2026).
 
 **What was done / deviations:**
 - `styles.css` is the mockup CSS **byte for byte**, plus a small block at the end marked "Stillspace additions": the footer disclaimer style, a desktop chat height 35 px shorter to make room for it, and a red hint colour for an invalid participant code.
@@ -197,32 +197,56 @@ Before you start: `git pull origin claude/gracious-euler-tlrs89`, make sure `.en
 
 **Goal:** participants, scheduling and check-ins are saved in SQLite, with PHQ-9 scored on the server and the frontend routing by status.
 
+**Status:** 🔨 Built – waiting for your checks.
+
 **Files:**
-- `backend/db.py`: `get_connection()`, `create_tables()` (spec section 9, `CREATE TABLE IF NOT EXISTS`), small query helpers
-- `backend/checkins.py`: `score_phq9(answers)`, `phq_band(total)`, `local_today(participant)`, `due_status(participant)`
+- `backend/db.py`: `get_connection()`, `create_tables()` (all 4 tables from spec 9, including `sessions`/`messages` for Phase 4), participant and check-in helpers
+- `backend/checkins.py`: `score_phq9()`, `phq_band()`, `clean_phq_answers()`, `local_today()`, `build_status()`
 - `backend/routes/participants.py`: `POST /api/participants`, `GET /api/participants/{code}/status`, `PATCH /api/participants/{code}`, `POST /api/demo/advance` (404 unless `DEMO_MODE=true`)
 - `backend/routes/checkins.py`: `POST /api/checkins` (setup / daily upsert / fortnightly / post_session)
-- `backend/main.py`: creates tables on startup, includes the new routers
-- `frontend/app.js`: consent → `POST /api/participants` → route to setup / daily / fortnightly / chat; code kept in `sessionStorage` (try/catch); "Finish/Save" buttons call `POST /api/checkins`; tab Due/Done labels from `/status`; sidebar mood buttons save the daily check-in; preview-day buttons call `/api/demo/advance`; "Switch participant" link
+- `backend/main.py`: creates tables on start-up, includes the new routers
+- `frontend/app.js`: sign-in and routing, saving check-ins, mood and preference saving, demo buttons, "Switch participant", "New session" keeps the participant
+- `frontend/index.html`: one empty `#participantbox` under the sidebar steps (hidden until sign-in)
+
+**What was done / deviations:**
+- The consent page's primary button is now **"Continue →"** and routes by status (setup → daily → two-week → chat). **"Skip to chat →"** signs in and goes straight to chat, because check-ins are optional in the mockup (D-26).
+- After a refresh, the code kept in `sessionStorage` signs you back in and routes by status. If nothing is due, you land in chat; the Check-ins tab shows the saved answers (D-27).
+- Check-in save buttons: the in-card buttons and the bottom button both save, then move to the next due tab (or to chat). Bottom-button labels are now "Save setup →", "Finish daily check-in →" and "Finish two-week check-in →" (the mockup's "Continue to setup/chat" labels no longer fit the new order).
+- After a PHQ-9 save, a short toast shows the **server's** result ("Saved. PHQ-9 total 9 (mild)." or "…incomplete, so no total is stored.").
+- The risk indicator shows "Follow-up needed" when the live PHQ form has item 9 > 0 **or** the latest saved PHQ-9 has `item9_flag=1` (spec 11.5). Safety replies are added in Phase 5.
+- "＋ New session" / "Start new session" (was "Reset demo") keeps the participant and their check-ins and only clears the conversation. The new server session is created in Phase 4.
+- "Signed in as P001 / Switch participant" appears under the sidebar steps. It is also visible in the ☰ menu on phones, where the mockup hides the sidebar info box.
+- **Automated verification (dev chat, Linux + headless Chromium, throwaway DB):** 17 API cases (scoring, all 5 band boundaries, incomplete PHQ, invalid values, daily merge, demo offset, 404s, demo off) and 33 browser checks covering checks 1–5, refresh, mobile and console errors all passed. Your Windows run is still the deciding check.
 
 **Manual checks:**
 
-1. Open http://localhost:8000, tick consent, enter `P001`.
-   **Expect:** you land on the **setup** tab. Complete it → you move to **daily**; complete daily → **fortnightly**.
-2. On PHQ-9 answer every item with value **1** ("Several days") and save.
-   **Expect:** the score shows **9 – mild**. Press F5: you are still logged in as P001, and the PHQ answers and the tabs' Done status are kept.
-3. Click "14 days later" (demo) so PHQ-9 is due again. Leave **one item unanswered** and save. Then in Terminal B:
+Before you start: `git pull origin claude/gracious-euler-tlrs89`, restart the server and press **Ctrl+F5**. If you tested with an older database, delete `data\stillspace.db` first (it is re-created on start-up). The demo buttons ("Next day", "14 days later") are on the **Session summary** page: from chat click **Finish & reflect → View summary**.
+
+1. Open http://localhost:8000, enter code `P001`, tick the box, click **Continue →**.
+   **Expect:** you land on the **Once at setup** tab and the sidebar shows "Signed in as P001". Enter a date of birth, choose a style, click **Save setup →** → you move to **Daily / at login**. Pick a mood, click **Finish daily check-in →** → you move to **Every two weeks**.
+2. Answer all 9 PHQ items with **1 – Several days**, then click **Finish two-week check-in →**.
+   **Expect:** the score shows **9 / 27** and "Mild symptom range" before saving. A toast says "Saved. PHQ-9 total 9 (mild)." and you land in chat. Press **F5**: you are still signed in, the mood and side-panel style are kept, and under **Check-ins → Every two weeks** your answers are still selected, with all three tabs showing "Done".
+3. Go to **Finish & reflect → View summary → 14 days later**. On the two-week tab answer items 1–8 and leave item 9 unanswered, then click **Finish two-week check-in →**.
+   **Expect:** the score box says "Incomplete · no severity result", and the toast says "…incomplete, so no total is stored". In a second terminal:
    ```powershell
    python -c "import sqlite3; c=sqlite3.connect('data/stillspace.db'); print(c.execute(\"select id, phq_total, phq_band, phq_complete from checkins where type='fortnightly' order by id desc limit 1\").fetchone())"
    ```
-   **Expect:** the UI shows no total. The row prints like `(5, None, None, 0)`.
-4. Make PHQ-9 due again ("14 days later"), answer all items, with item 9 = **1**, and save.
-   **Expect:** the follow-up notice from the mockup appears with the helplines, and the right-rail risk indicator says **"Follow-up needed"**.
-5. Click "Switch participant", then log in again as `P001`.
-   **Expect:** nothing is due, so you go straight to chat. Click **"Next day"**: daily shows Due. Click **"14 days later"**: fortnightly shows Due.
-6. Open `D:\CreatED-cloud\stillspace\data\stillspace.db` in DB Browser for SQLite (install it to D:, or use the portable version) → Browse Data.
-   **Expect:** `participants` has a P001 row (`setup_done=1`, `demo_day_offset` > 0). `checkins` has setup, daily and fortnightly rows, with unanswered questions missing from `answers_json` (not stored as 0) and `item9_flag=1` on the last PHQ.
-7. (Extra) Set `DEMO_MODE=false`, restart, reload. **Expect:** the preview-day buttons are hidden, and `Invoke-RestMethod -Method Post http://localhost:8000/api/demo/advance -ContentType application/json -Body '{"code":"P001","days":1}'` returns a 404 error. Set it back to `true`.
+   **Expect:** something like `(5, None, None, 0)`.
+4. Again **Finish & reflect → View summary → 14 days later**. Answer all 9 items, with item 9 = **1**, and save.
+   **Expect:** as soon as item 9 is clicked, the follow-up notice ("A human follow-up matters here…") appears and the right-rail risk indicator shows **"Follow-up needed"**. It stays that way after saving and after F5.
+5. Click **Switch participant** (sidebar), then sign in again as `P001` with **Continue →**.
+   **Expect:** nothing is due, so you go straight to chat. **Finish & reflect → View summary → Next day** → the check-ins open with **Daily · Due** and "preview day N+1". Back on the summary, **14 days later** → **Every two weeks · Due**, with an empty form.
+6. Open `data\stillspace.db` in DB Browser for SQLite → **Browse Data** (or run the one-liner below).
+   ```powershell
+   python -c "import sqlite3; c=sqlite3.connect('data/stillspace.db'); print(c.execute('select code, setup_done, dob, preferred_strategy, demo_day_offset from participants').fetchall()); [print(r) for r in c.execute('select id, type, answers_json, phq_total, phq_band, phq_complete, item9_flag, local_date from checkins')]"
+   ```
+   **Expect:** `participants` has P001 with `setup_done=1`, your date of birth and `demo_day_offset` > 0. `checkins` has setup, daily and fortnightly rows. Skipped questions are **missing** from `answers_json` (never stored as 0), the incomplete PHQ has `phq_total` empty and `phq_complete=0`, and the last PHQ has `item9_flag=1`.
+7. (Extra) Set `DEMO_MODE=false` in `.env`, restart, reload. **Expect:** the summary page has no "Preview repeat visits" card, and the check-ins bar has no "preview day" text. Then:
+   ```powershell
+   Invoke-RestMethod -Method Post http://localhost:8000/api/demo/advance -ContentType application/json -Body '{"code":"P001","days":1}'
+   ```
+   **Expect:** a red error ending in `(404) Not Found`. Set `DEMO_MODE=true` again and restart.
+8. (Extra) Change "Requested by you" in the side panel to **Advice**, then press F5. **Expect:** it still shows Advice (saved with PATCH, D-29).
 
 ---
 
@@ -461,6 +485,13 @@ Things the spec leaves open or gets slightly wrong. In each case I picked the si
 | D-21 | **Classifier = Qwen with a prompt** (your suggestion 1, and also the spec). Training a separate DistilBERT/DeBERTa classifier is a **stretch idea only**. It is documented in `docs/ARCHITECTURE.md` and as optional extension work in `mentoring.md` (Phase 10), and no code is written for it. | Spec section 3 puts training a separate classifier out of scope. The 30-row `eval/test_messages.csv` is far too small to train on. A real attempt would use the strategy-labelled ESConv dataset and reuse `scripts/eval_classifier.py` to compare. |
 | D-22 | **Safety is strengthened, never weakened** (your suggestion 2). The spec already runs a deterministic keyword/regex check **before** any LLM call (the LLM is never called on a match) and the classifier's `risk` only adds a second net. Phase 5 adds: (a) text normalisation before matching (lower-case, curly→straight apostrophes, collapsed spaces, stretched letters like `dieee`→`die`, simple digit/symbol swaps like `k1ll`); (b) English, romanised Hinglish **and** Devanagari phrases; (c) `eval/safety_prompts.csv` grows from 15 to **30** synthetic, non-graphic rows (20 crisis incl. indirect, Hinglish and misspelled; 10 tricky normal ones such as "this exam is killing me"); (d) every keyword hit is logged with the matched pattern ID so false positives can be reviewed. | Extra protection, at no cost to the mock or offline modes. The fixed crisis reply with Tele-MANAS 14416 / 1-800-891-4416 and 112 is unchanged. |
 | D-23 | **Model choice is still open** (your suggestion 3). The default stays `qwen/qwen3-8b` via OpenRouter (spec section 4) until you confirm availability with the command in Phase 4 check 0. The spec doesn't name a **mental-health fine-tuned** model. Community fine-tunes are usually published as weights on Hugging Face, not on OpenRouter, so the likely route is **Ollama** on the dev laptop (models on `D:\ollama\models`). If the two models are on different providers, Phase 9's `--models` will accept a provider prefix (e.g. `ollama:<model>`). This is decided when you name the model. | No model is assumed without your confirmation. Only `.env` and the `--models` argument change. |
+| D-24 | `GET /status` (and the other participant/check-in responses) return a few **extra** fields beyond spec 10: `code`, `local_date`, `demo_day_offset`, and `answers` (setup answers, today's daily answers, and the current fortnight's PHQ/extra answers). | Phase 3 check 2 needs saved answers to reappear after a refresh, and the preview label needs the demo date. The spec's fields are all present and unchanged. |
+| D-25 | `POST /api/checkins` returns `{"checkin": <stored row>, "status": <fresh status>}`. | The page updates its Due/Done labels from the server's answer without a second request. |
+| D-26 | The consent page's primary button became "Continue →" (routes by status); "Skip to chat →" stays. | Spec 12 asks for routing on continue; the mockup keeps check-ins optional. |
+| D-27 | A refresh signs the person back in and routes by status, instead of returning to the exact screen they were on. | Simplest reliable behaviour; nothing is lost because answers are stored. |
+| D-28 | Pressing a daily Finish button always stores a row, even with every question skipped. Picking a sidebar mood also stores today's daily row, so daily becomes "Done". | Mockup: "completion is an explicit action". Spec 11.6: the sidebar mood and the daily question write the same check-in. |
+| D-29 | Saving "Requested by you" (PATCH) is wired now rather than in Phase 7. Phase 7 check 3 still tests it. | It shares code with the setup preference built in this phase. |
+| D-30 | The PHQ item-9 rule lives in `checkins.score_phq9()` for now. Phase 5 moves it into `safety.phq_item9_flag()` as planned, without changing behaviour. | Phase 3 needs it before `safety.py` exists. |
 
 ---
 
@@ -472,4 +503,5 @@ Things the spec leaves open or gets slightly wrong. In each case I picked the si
 | K-02 | The `qwen/qwen3-8b` model ID and its availability on OpenRouter can change over time. | If Phase 4 check 2 fails with "model not found", only `LLM_MODEL` in `.env` needs to change. |
 | K-03 | The keyword safety check can't catch every indirect phrasing, and may flag figures of speech. | It is backed by the classifier's `risk` check (Phase 7). False positives and negatives found in Phase 5 will be listed here. |
 | K-04 | The comparison model (mental-health fine-tuned) has not been chosen yet (D-23). | Needed before Phase 9. Phases 2–8 don't depend on it. |
-| K-05 | During Phases 2–3, some new texts already describe the finished app ("saved on this computer", "Replies are generated by an AI model"), but saving arrives in Phase 3 and real replies in Phase 4. Until then check-ins live only in the page, and chat answers come from placeholder replies in `app.js`. | Expected for a phased build. Fixed by Phases 3 and 4. |
+| K-05 | Until Phase 4, chat answers come from placeholder replies in `app.js` and are not saved, although the text says replies come from an AI model. Check-in saving is real since Phase 3. | Fixed by Phase 4. |
+| K-06 | A mood or style chosen on the consent page **before** signing in is not saved: after sign-in the page shows what the server has stored. | Minor. Choose them after signing in. |
