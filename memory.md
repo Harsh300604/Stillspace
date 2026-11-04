@@ -129,6 +129,7 @@ Mock mode: set `LLM_API_KEY=` (empty) and restart.
 - **Built:** `routes/sessions.py` (start/end/summary), reflection saved as a `post_session` check-in, a server-built summary page (time, messages, latest PHQ-9, strategy bars, reflection), `scripts/export_data.py` (4 CSVs for Excel).
 - **Verified by the dev chat:** API cases + browser checks 1 and 2 + export (4 CSVs with BOM); Phase 3/7 regressions green.
 - **Note:** `db.py` is 214 lines; it gets restructured in Phase 11 (Postgres).
+- **Checks 1–4:** all passed in the dev chat's run on a fresh copy (mock mode), at the developer's request.
 
 ### Plan change after Phase 7 (4 Nov 2026)
 - The developer wants to deploy the app later so the student can share it. **Decision:** Supabase Postgres + online safety, as a new **Phase 11**, built after Phase 9 and before Phase 10 (D-46 to D-50).

@@ -464,7 +464,7 @@ Before you start: `git pull origin claude/gracious-euler-tlrs89`; Terminal C (`o
 
 **Goal:** sessions end cleanly, the reflection is saved, the summary comes from the server, and data exports to CSV.
 
-**Status:** 🔨 Built – waiting for your checks.
+**Status:** 🔨 Built. **Checks 1–4 all passed in the dev chat's run on a fresh copy (mock mode, 4 Nov 2026, at your request):** check 1 "Messages sent 3", server time 00:04, bars Validation 2 / Advice 1 matching the badges, reflection shown, PHQ "9 / 27 · Mild", log `session 1 ended after 4s`; check 2 "Reflection skipped."; check 3: 4 CSVs, each with the Excel marker, consistent columns and no garbled text; check 4: `(4, 'post_session', 1, '{"comfort": 7, "validation": 8, "useful": "Yes"}')` and `(5, 'post_session', 2, '{}')` from "Review reflection". Waiting for your OK to mark it done.
 
 **Files:**
 - `backend/routes/sessions.py` (new, D-52): `POST /api/sessions` (moved from chat.py), `POST /api/sessions/{id}/end` (stores `ended_at` and `chat_seconds` using the server clock, D-13), `GET /api/sessions/{id}/summary` → `message_count`, `reply_count`, `chat_seconds`, `strategy_counts` (incl. `Safety`), `requested_strategy`, `last_used_strategy`, `latest_phq`, `reflection`, `started_at`, `ended_at`.
