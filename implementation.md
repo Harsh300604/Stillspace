@@ -38,7 +38,7 @@ Around the chat there are check-ins (setup, daily mood, PHQ-9 every 14 days, pos
 | Phase | Goal | Main files created / changed | Status |
 |---|---|---|---|
 | 0 | Write this plan | `implementation.md` | ✅ Approved |
-| 1 | Skeleton and config, D: drive setup | folders, `requirements.txt`, `.env.example`, `.gitignore`, `backend/config.py`, `backend/main.py`, `backend/routes/config_route.py`, `backend/data/strategies_4.json`, `backend/data/strategies_esconv8.json`, placeholder `frontend/index.html`, `docs/mockup/Stillspace-2.html` | 🔨 Built – waiting for your checks |
+| 1 | Skeleton and config, D: drive setup | folders, `requirements.txt`, `.env.example`, `.gitignore`, `backend/config.py`, `backend/main.py`, `backend/routes/config_route.py`, `backend/data/strategies_4.json`, `backend/data/strategies_esconv8.json`, placeholder `frontend/index.html`, `docs/mockup/Stillspace-2.html` | ✅ Done – checks 1–5 passed |
 | 2 | Frontend port | `frontend/index.html`, `frontend/styles.css`, `frontend/app.js` | ⬜ Not started |
 | 3 | Database, participants, check-ins | `backend/db.py`, `backend/checkins.py`, `backend/routes/participants.py`, `backend/routes/checkins.py`, demo endpoint, `backend/main.py`, `frontend/app.js` | ⬜ Not started |
 | 4 | LLM client, mock mode, basic chat | `backend/llm.py`, `backend/mock.py`, `backend/routes/chat.py`, `backend/data/prompts/plain_system.txt`, `frontend/app.js` | ⬜ Not started |
@@ -57,7 +57,12 @@ Status key: ⬜ not started · 🔨 built, waiting for your checks · ✅ checks
 
 ### Phase 1: Skeleton and config
 
-**Status:** 🔨 Built – waiting for your checks.
+**Status:** ✅ Done. All 5 checks passed on the dev laptop (4 Nov 2026): pip cache on `D:\cache\pip`, venv at `D:\CreatED-cloud\stillspace\.venv`, C: free space unchanged at 48.48 GB, `/api/config` shows 4 strategies and `mock_mode: true`, and switching to esconv8 shows 8.
+
+**Setup notes from the test run:**
+- `setx` only applies to terminals opened afterwards. `pip cache dir` showed C: until a brand-new PowerShell window was opened.
+- On a slow connection, `pip install` timed out. This fixed it: `pip install --timeout 120 --retries 10 -r requirements.txt`. These notes go into docs/TROUBLESHOOTING.md in Phase 10.
+- Python 3.11.9 is already installed at `C:\Program Files\Python311`, which is acceptable: only the venv and packages need to be on D:.
 
 **Goal:** a runnable FastAPI app on D: that serves a placeholder page and `GET /api/config`, with every setting read from `.env`.
 
