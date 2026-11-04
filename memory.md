@@ -122,6 +122,7 @@ Mock mode: set `LLM_API_KEY=` (empty) and restart.
   - My own quick one-liner said "20 mismatches" because Python read `x is not None != y` as a chained comparison. Always use the documented check command.
 - **Expect** ~6–9 s per reply with Ollama now (two model calls); mock mode stays instant.
 - **Developer's first run:** checks 1 and 2 good. In check 5 the **Reflection reply was identical to the Validation reply**: the same message was sent 4× in one conversation, so the model copied its own earlier reply from the history. Fix: a new session before each strategy (D-45). Lesson: when comparing strategies, use independent conversations (this matters for Phase 9 too).
+- **Checks 1–7 (dev-chat run on a fresh copy, at the developer's request):** all passed, including the privacy scan of the printed prompt and of every request to the model, and fresh sessions sending no earlier history.
 
 ---
 
