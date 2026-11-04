@@ -121,6 +121,7 @@ Mock mode: set `LLM_API_KEY=` (empty) and restart.
   - The fallback reply showed a strategy badge ("Validation") although no strategy shaped it → it shows "Fallback reply" again.
   - My own quick one-liner said "20 mismatches" because Python read `x is not None != y` as a chained comparison. Always use the documented check command.
 - **Expect** ~6–9 s per reply with Ollama now (two model calls); mock mode stays instant.
+- **Developer's first run:** checks 1 and 2 good. In check 5 the **Reflection reply was identical to the Validation reply**: the same message was sent 4× in one conversation, so the model copied its own earlier reply from the history. Fix: a new session before each strategy (D-45). Lesson: when comparing strategies, use independent conversations (this matters for Phase 9 too).
 
 ---
 
@@ -136,3 +137,4 @@ Mock mode: set `LLM_API_KEY=` (empty) and restart.
 8. **Safety changes need a test set.** Every change to `crisis_keywords.json` or `safety.py` should be followed by the 30-row check (`30 rows, 0 mismatches`). Never add an exception for a false positive if it could hide a real crisis.
 9. **A score is only as honest as its test set.** The mock classifier scores 93% because the same person wrote the rules and the test messages. Ask the student who wrote the labels, and whether the model has seen similar examples.
 10. **Bigger isn't automatically better.** On a 6 GB GPU, `qwen3:8b` was 10× slower than the 4B instruct model and, while thinking was still on, produced no usable answers. Measure before switching models.
+11. **Test design can fake a bug.** Sending the same message repeatedly in one chat made the model copy itself, which looked like "strategies don't work". Compare conditions in separate, fresh conversations.

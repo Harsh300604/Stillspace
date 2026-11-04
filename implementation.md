@@ -417,7 +417,7 @@ Before you start: `git pull origin claude/gracious-euler-tlrs89`. Terminal C (`o
 
 **Goal:** the full pipeline from spec section 5, an explainability panel, and a saved preference.
 
-**Status:** 🔨 Built – waiting for your checks.
+**Status:** 🔨 Built. **Your run (4 Nov 2026, qwen3:4b-instruct):** check 1 ✅ (Reflection; "confusion · intensity 3/5 · exploration"), check 2 ✅ (Advice with a concrete small step), check 5: Validation, Reassurance and Advice distinct, but **Reflection repeated the Validation reply word for word**, because the same message was sent repeatedly in one conversation and the model copied its previous reply from the history. Check 5 now says to start a new session before each strategy (D-45). Checks 3 and 4 still to report.
 
 **Files:**
 - `backend/strategy_policy.py`: `choose_strategy(requested, classified, safety_flag, strategy_names)`, exactly spec 11.2 (safety → request → classifier → first strategy).
@@ -445,7 +445,7 @@ Before you start: `git pull origin claude/gracious-euler-tlrs89`; Terminal C (`o
 3. Press **F5**. **Expect:** "Requested by you" still shows **Advice**. Set it back to **Automatic**.
 4. In `backend\routes\chat.py` find the line ending in `# DEBUG: print system prompt` and remove the `# ` at its start (save; uvicorn reloads). Send a message.
    **Expect:** Terminal A prints the system prompt with "Support strategy for this reply: …", "How to apply it: …", "- Mood today: Low" and "- Recent wellbeing questionnaire: … range". **No** date of birth and no individual PHQ answers. Put the `# ` back afterwards (or run `git checkout backend/routes/chat.py`).
-5. Send "My friends have been ignoring me" four times, with "Requested by you" set to **Validation**, **Reflection**, **Reassurance** and **Advice** in turn.
+5. Send "My friends have been ignoring me" four times, with "Requested by you" set to **Validation**, **Reflection**, **Reassurance** and **Advice** in turn. **Click "＋ New session" before each one**, so the earlier reply in the history doesn't steer the model (D-45).
    **Expect:** the four badges match the four choices and the replies read noticeably differently (Validation names the feeling; Reflection paraphrases and asks; Reassurance offers perspective; Advice gives a small step).
 6. (Extra) Set `INCLUDE_CHECKINS_IN_PROMPT=false`, restart and repeat check 4. **Expect:** no "Mood today" or "questionnaire" lines. Set it back to `true`.
 7. (Extra) Database:
@@ -598,6 +598,7 @@ Things the spec leaves open or gets slightly wrong. In each case I picked the si
 | D-42 | The classifier prompt and strategy descriptions are **not** tuned after the first real run (90%), and the self-reported `confidence` is not used for decisions. | Tuning on the 30 test messages would overfit them (the score would stop meaning anything). The 3 Reassurance misses are kept as a ready-made student exercise (Session 8). Confidence was 0.95+ even when wrong. |
 | D-43 | `/no_think` is added only for **hybrid** Qwen3 models (name contains `qwen3` but not `instruct` or `thinking`): on the system message if there is one, otherwise on the last message. **Dev model stays `qwen3:4b-instruct-2507-q4_K_M` for classifier and replies.** | The `qwen3:8b` comparison failed: it thought until the 200-token limit (cut-off JSON → fallback) and took 35–51 s per message on the 6 GB GPU. The classifier sends one user message, so the old system-only switch never reached it. The handoff model `qwen/qwen3-14b` is hybrid too. |
 | D-44 | Phase 7 pipeline details: the classifier gets the same history as the reply; `meta_json` = classifier meta + `classifier_source` + `classifier_ms`; `latency_ms` = total wait; check-in context = today's mood + latest **complete** PHQ band only; a classifier `risk: high` gives the fixed reply with `safety_flag="classifier"` and keeps the classifier's strategy in `classified_strategy`; the panel explains when a request overrode the classifier; fallback replies keep the "Fallback reply" badge; new keyword rule `en-sleep-never-wake`. | Spec 5, 10, 11.2, 11.4 and 12; honest badges (a fallback text was not shaped by any strategy); the extra keyword rule closes a gap found while testing. |
+| D-45 | Phase 7 check 5 is run with **a new session before each strategy**. No code change. | In your first run the identical message sent 4× in one conversation made the 4B model copy its previous reply for Reflection: history outweighed the new strategy instruction. That's a test-design issue (real users rarely repeat the exact message), but worth knowing for the Phase 9 evaluation: compare strategies on independent conversations. |
 
 ---
 

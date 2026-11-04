@@ -178,6 +178,11 @@ Each entry has:
 - Under "Currently used by model": the strategy, then "Emotion · intensity · stage". If the user's request overrode the classifier: "Classifier suggested X; your request was used."
 - **Badges stay honest:** a fallback reply shows "Fallback reply", not a strategy, because no strategy shaped it.
 
+### Comparing strategies needs separate conversations (D-45)
+- In the developer's first check, the same message sent four times in **one** conversation made the 4B model repeat its earlier reply word for word for "Reflection". The history outweighed the new strategy instruction.
+- **Decision:** compare strategies in **fresh sessions**. This also applies to the Phase 9 evaluation script, which classifies and replies to each test message independently.
+- **Teaching note:** a nice example of how a test set-up can create a "bug" that isn't in the code.
+
 ### A gap found while testing
 - "I just want to sleep and never wake up" slipped past the keywords. It would only have been caught by the classifier's risk check. A keyword rule was added, so the deterministic net catches it too. *Lesson: write tests for indirect phrasings, not only the obvious ones.*
 
@@ -198,4 +203,4 @@ Each entry has:
 | 4 Nov 2026 | after Phase 4 | File created; covers D-01 to D-39 |
 | 4 Nov 2026 | Phase 5 | Safety section updated (D-40) |
 | 4 Nov 2026 | Phase 6 | Classifier section added (D-41); first real result and no-tuning decision (D-42); qwen3:8b comparison and hybrid-model fix (D-43) |
-| 4 Nov 2026 | Phase 7 | Strategy-aware replies section added (D-44) |
+| 4 Nov 2026 | Phase 7 | Strategy-aware replies section added (D-44); check-5 method (D-45) |
