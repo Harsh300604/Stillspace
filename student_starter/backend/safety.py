@@ -14,7 +14,7 @@ from functools import lru_cache
 
 from backend import config
 
-HELPLINES = config.HELPLINES  # one source for the numbers (implementation.md D-06)
+HELPLINES = config.HELPLINES  # one source for the numbers (decision D-06)
 KEYWORDS_FILE = config.BACKEND_DATA_DIR / "crisis_keywords.json"
 
 # Common look-alike swaps used to dodge filters: k1ll -> kill, $uicide -> suicide.

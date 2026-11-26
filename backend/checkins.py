@@ -75,7 +75,7 @@ def build_status(conn: db.Connection, participant: dict, strategy_names: list[st
     daily = db.latest_checkin(conn, participant["id"], "daily", local_date=today)
     fortnightly = db.latest_checkin(conn, participant["id"], "fortnightly")
 
-    # Due if never done, or if the last one is 14+ days old (implementation.md D-12).
+    # Due if never done, or if the last one is 14+ days old (decision D-12).
     fortnightly_due = True
     if fortnightly:
         days_since = (date.fromisoformat(today) - date.fromisoformat(fortnightly["local_date"])).days
@@ -105,7 +105,7 @@ def build_status(conn: db.Connection, participant: dict, strategy_names: list[st
         "today_mood": daily_answers.get("mood"),
         "latest_phq": latest_phq,
         "preferred_strategy": preferred,
-        # Extra fields (implementation.md D-24): let the page show saved answers
+        # Extra fields (decision D-24): let the page show saved answers
         # again after a refresh, and show the demo date.
         "local_date": today,
         "demo_day_offset": participant["demo_day_offset"] or 0,

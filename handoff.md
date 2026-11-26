@@ -33,9 +33,6 @@ Around the chat there are optional **check-ins**: a one-time setup, a daily mood
 | 5 | `docs/ARCHITECTURE.md` | Each file's job, the tables, the endpoints, how to switch settings | 20 min |
 | 6 | `mentoring.md` | If you teach a student: the 16 one-hour sessions | 1 h |
 | 7 | `docs/DEPLOYMENT.md` | If you deploy: Supabase, Railway/Render, the pre-launch checklist | 30 min |
-| — | `decisions.md` | The reasoning behind design choices (readable narrative) | as needed |
-| — | `implementation.md` | Phase-by-phase build record, numbered decisions (D-01…D-61) and known issues (K-01…K-12) | as needed |
-| — | `memory.md` | Build journal: what went wrong and how it was fixed; lessons for the mentor | as needed |
 | — | `docs/TROUBLESHOOTING.md` | Look up any error message | as needed |
 | — | `Stillspace_Build_Specification.docx` | The original specification the build follows | as needed |
 
@@ -192,7 +189,7 @@ Running the study: `python scripts/safety_report.py --days 1` (flags: code, time
 | K-11 | Beginner setup verified on Linux, not on a Windows laptop | Follow `docs/SETUP.md` once on Windows, or with the student in session 2 |
 | K-12 | The code is still the only secret needed to sign in (no password, by spec design) | Hand codes out privately; a PIN could be added if the ethics board asks |
 
-Full list with history: `implementation.md` → Known issues.
+Ids like K-07 and D-60 refer to the developer's build log; ask the developer for the full history if needed.
 
 ## 11. Changing things
 

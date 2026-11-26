@@ -144,4 +144,4 @@ Restart uvicorn after changing `.env`.
 - **All prompt text in `.txt` files**: change wording without touching Python.
 - **Safety before AI**: the keyword check runs first and never needs the model.
 - **Server is the source of truth**: PHQ-9 scores, what's due and the summary are computed by the server, not the browser.
-- Every decision and its reason is in `decisions.md` (and numbered in `implementation.md`).
+- Numbers like D-45 in comments and docs are decision ids from the developer's build log; the main design choices are explained in `handoff.md` and `flow.md`.
