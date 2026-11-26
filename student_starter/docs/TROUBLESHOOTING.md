@@ -51,7 +51,7 @@
 |---|---|---|
 | "Mock mode" tag although you set a key | `LLM_API_KEY` is empty, `MOCK_MODE=true`, or the server wasn't restarted | Check `.env`, save, restart uvicorn; the start-up line should say `mock_mode=False`. |
 | Yellow "The AI model could not be reached…" + Retry; terminal `AuthenticationError ... 401` | Wrong or deleted API key | Create a new key on OpenRouter, paste it into `.env`, restart. |
-| Terminal `NotFoundError ... 404` / "model not found" | The model ID doesn't exist (any more) | Check available models (Phase 4 check 0 in `implementation.md`, or `docs/SETUP.md` §9) and update `LLM_MODEL`. `qwen/qwen3-8b` is no longer on OpenRouter; use `qwen/qwen3-14b`. With Ollama: `ollama list` and `ollama pull <model>`. |
+| Terminal `NotFoundError ... 404` / "model not found" | The model ID doesn't exist (any more) | Check available models (`docs/SETUP.md` §9) and update `LLM_MODEL`. `qwen/qwen3-8b` is no longer on OpenRouter; use `qwen/qwen3-14b`. With Ollama: `ollama list` and `ollama pull <model>`. |
 | Terminal `RateLimitError ... 429` from the provider | Too many requests or no credit left | Wait, add credit, or check the key's limit on OpenRouter. |
 | "You've reached the message limit for now…" in the chat | Stillspace's own limit (40/hour per participant, 700/day total) | Wait, or change `CHAT_LIMIT_PER_HOUR` / `DAILY_CHAT_LIMIT` in `.env` (local testing). Safety replies are never limited. |
 | `APIConnectionError: Connection error` | No internet, or Ollama isn't running | Check internet; for Ollama start `ollama serve` (see below). |

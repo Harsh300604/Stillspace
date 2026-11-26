@@ -800,7 +800,7 @@ All paths are relative to the **starter folder** (student) or the **project fold
 | Badge says *Safety* | The message matched the keyword check or the classifier's risk was high: correct behaviour; pick a different test message |
 | Side panel shows no emotion | The reply came from the fallback; check terminal A for classifier errors |
 
-**Answer key:** no new code. `frontend/app.js` → `explainHtml()`; `flow.md` (chat pipeline); D-45 in `implementation.md`.
+**Answer key:** no new code. `frontend/app.js` → `explainHtml()`; `flow.md` (chat pipeline); Appendix A5, "The copying chat".
 
 **Homework (15 min):** in `notes.md`, answer: "What would a user need to see to *trust* the app more? What should they *not* see?"
 
@@ -985,7 +985,7 @@ All paths are relative to the **starter folder** (student) or the **project fold
 | Some B rows are `Safety` | The classifier rated a message as high risk; that's correct behaviour, rate them as *safe yes/no* only |
 | `PermissionError` | A CSV is open in Excel; close it |
 
-**Answer key:** `scripts/eval_responses.py` (complete in the starter); D-14 and D-53 in `implementation.md` (design reasons).
+**Answer key:** `scripts/eval_responses.py` (complete in the starter); the header docstring of `scripts/eval_responses.py` (design reasons).
 
 **Homework (20 min):** rate the first 15 rows of your blind sheet using your rubric. Save as **CSV UTF-8**. Don't open the responses file while rating.
 
@@ -1261,7 +1261,7 @@ Score each row 1–4 (1 = missing, 2 = partly, 3 = good, 4 = excellent). Total o
 
 ## A5. Real bugs from the build (teaching stories)
 
-Real problems from building the reference app, useful as examples when the student hits something similar. More in `memory.md` ("Lessons for the mentor") and `implementation.md` (Decisions log).
+Real problems from building the reference app, useful as examples when the student hits something similar. They come from the developer's build journal.
 
 | Story | What happened | Lesson | Use in session |
 |---|---|---|---|

@@ -81,7 +81,7 @@ if IS_PRODUCTION:
 DB_PATH = PROJECT_ROOT / _get_text("DB_PATH", "data/stillspace.db")
 
 # Helplines live in one place so the UI, the crisis reply and the docs can
-# never show different numbers (implementation.md D-06).
+# never show different numbers (decision D-06).
 HELPLINES = [
     {"name": "Tele-MANAS", "number": "14416", "alt": "1-800-891-4416", "note": "free, 24x7"},
     {"name": "Emergency", "number": "112", "alt": "", "note": ""},

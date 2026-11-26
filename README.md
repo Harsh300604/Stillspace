@@ -43,9 +43,6 @@ Only `.env` changes; the code stays the same.
 stillspace/
 ├── README.md            this file
 ├── flow.md              how the app flows: users, sign-in, journey, chat pipeline, safety
-├── implementation.md    phased build plan, checks, decisions log, known issues
-├── decisions.md         why things were built this way (for the mentor)
-├── memory.md            build journal: problems hit and how they were fixed
 ├── handoff.md           start here if you are taking over the project
 ├── mentoring.md         16-session teaching plan (one hour each)
 ├── requirements.txt     Python packages
