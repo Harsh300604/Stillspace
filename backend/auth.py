@@ -62,6 +62,9 @@ def require_participant(conn: db.Connection, request: Request) -> dict:
     participant = db.get_participant_by_id(conn, row["participant_id"])
     if participant is None:  # deleted after signing in (withdrawal)
         raise HTTPException(401, EXPIRED)
+    if config.IS_PRODUCTION and not participant["issued"]:
+        # A token made in local mode for a test code (e.g. P001) must never work online (D-56).
+        raise HTTPException(401, EXPIRED)
     return participant
 
 
